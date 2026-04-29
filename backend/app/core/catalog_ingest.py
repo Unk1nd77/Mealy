@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
 from app.core.recipe_catalog import RecipeCatalogError, normalize_recipe_payload
+from app.core.relational_store import sync_recipe_normalized
 from app.db.models import (
     Recipe,
     RecipeCandidate,
@@ -176,14 +178,11 @@ async def admit_recipe_candidate(session: AsyncSession, *, candidate_id: str) ->
     recipe = Recipe(
         title=title,
         description=candidate.normalized_payload.get("description", ""),
-        ingredients=candidate.normalized_payload["ingredients"],
         calories=candidate.normalized_payload["calories"],
         protein=candidate.normalized_payload["protein"],
         fat=candidate.normalized_payload["fat"],
         carbs=candidate.normalized_payload["carbs"],
-        tags=candidate.normalized_payload.get("tags", []),
         meal_type=candidate.normalized_payload.get("meal_type"),
-        allergens=candidate.normalized_payload.get("allergens", []),
         ingredients_short=candidate.normalized_payload.get("ingredients_short"),
         prep_time_min=candidate.normalized_payload.get("prep_time_min"),
         category=candidate.normalized_payload.get("category"),
@@ -191,6 +190,13 @@ async def admit_recipe_candidate(session: AsyncSession, *, candidate_id: str) ->
     )
     session.add(recipe)
     await session.flush()
+    await sync_recipe_normalized(
+        session,
+        recipe,
+        ingredients=candidate.normalized_payload["ingredients"],
+        tags=candidate.normalized_payload.get("tags", []),
+        allergens=candidate.normalized_payload.get("allergens", []),
+    )
     candidate.admitted_recipe_id = recipe.id
     await session.commit()
     await cache.delete("recipes:all")

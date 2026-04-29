@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from io import BytesIO
+from pathlib import Path
 from typing import Literal
 
 from celery.result import AsyncResult
@@ -15,7 +17,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
+from app.core.agent.orchestrator import build_plan_observability
 from app.core.demo_pipeline import create_demo_task, get_demo_task, schedule_demo_pipeline
+from app.core.relational_store import (
+    build_plan_data_from_rows,
+    create_generation_run,
+    sync_plan_rows,
+)
 from app.core.skills.aggregator import aggregate_shopping_list
 from app.core.skills.ics_export import generate_ics
 from app.db.models import MealPlan, MealPlanStatus
@@ -23,6 +31,17 @@ from app.db.session import get_db
 from app.worker import celery_app
 
 router = APIRouter(prefix="/api", tags=["Plans"])
+PLAN_RESPONSE_CACHE_TTL = 3600
+SHOPPING_LIST_CACHE_TTL = 1800
+PLAN_RESPONSE_CACHE_VERSION = "v1"
+SHOPPING_LIST_CACHE_VERSION = "v1"
+
+PDF_FONT_NAME = "NutriAgentShoppingFont"
+PDF_FONT_CANDIDATES = (
+    Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+    Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
+    Path("/Library/Fonts/Arial Unicode.ttf"),
+)
 
 
 class GeneratePlanRequest(BaseModel):
@@ -72,11 +91,185 @@ class PlanResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PlanObservabilityStepResponse(BaseModel):
+    key: str
+    status: str
+    message: str
+
+
+class PlanObservabilityDayCheckResponse(BaseModel):
+    day_number: int
+    total_calories: float
+    target_calories: int
+    deviation_kcal: float
+    deviation_pct: float
+    within_target: bool
+
+
+class PlanObservabilityResponse(BaseModel):
+    source: str
+    summary: str
+    steps: list[PlanObservabilityStepResponse] = Field(default_factory=list)
+    day_checks: list[PlanObservabilityDayCheckResponse] = Field(default_factory=list)
+    has_persisted_trace: bool = False
+
+
+def _plan_response_cache_key(plan_id: uuid.UUID | str) -> str:
+    return cache.build_key("plans", "response", PLAN_RESPONSE_CACHE_VERSION, plan_id)
+
+
+def _shopping_list_cache_key(plan_id: uuid.UUID | str) -> str:
+    return cache.build_key("plans", "shopping-list", SHOPPING_LIST_CACHE_VERSION, plan_id)
+
+
+def _is_plan_response_payload(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return False
+
+    required_keys = {"id", "user_id", "status", "start_date", "end_date", "plan_data"}
+    if not required_keys.issubset(payload):
+        return False
+
+    if not isinstance(payload["id"], str) or not isinstance(payload["user_id"], str):
+        return False
+    if not isinstance(payload["status"], str):
+        return False
+
+    start_date = payload["start_date"]
+    end_date = payload["end_date"]
+    if start_date is not None and not isinstance(start_date, str):
+        return False
+    if end_date is not None and not isinstance(end_date, str):
+        return False
+
+    plan_data = payload["plan_data"]
+    if plan_data is None:
+        return True
+    if not isinstance(plan_data, dict):
+        return False
+
+    return (
+        isinstance(plan_data.get("days"), list)
+        and isinstance(plan_data.get("total_days"), int)
+        and "daily_target_calories" in plan_data
+    )
+
+
+def _is_shopping_list_payload(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if not isinstance(payload.get("plan_id"), str):
+        return False
+
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return False
+
+    for item in items:
+        if not isinstance(item, dict):
+            return False
+        if not isinstance(item.get("name"), str):
+            return False
+        if not isinstance(item.get("unit"), str):
+            return False
+        if not isinstance(item.get("amount"), int | float):
+            return False
+
+    return True
+
+
+def _serialize_plan_response(plan: MealPlan, plan_data: dict | None) -> dict:
+    return {
+        "id": str(plan.id),
+        "user_id": str(plan.user_id),
+        "status": plan.status.value,
+        "start_date": plan.start_date.isoformat() if plan.start_date else None,
+        "end_date": plan.end_date.isoformat() if plan.end_date else None,
+        "plan_data": plan_data,
+    }
+
+
+def _fallback_plan_data(plan: MealPlan) -> dict | None:
+    value = getattr(plan, "plan_data", None)
+    return value if isinstance(value, dict) else None
+
+
+async def _cache_plan_response(plan: MealPlan, plan_data: dict | None) -> None:
+    await cache.set_json(
+        _plan_response_cache_key(plan.id),
+        _serialize_plan_response(plan, plan_data),
+        ttl=PLAN_RESPONSE_CACHE_TTL,
+    )
+
+
+async def _cache_shopping_list(plan_id: uuid.UUID, shopping_list: list[dict]) -> dict:
+    payload = {"plan_id": str(plan_id), "items": shopping_list}
+    await cache.set_json(
+        _shopping_list_cache_key(plan_id),
+        payload,
+        ttl=SHOPPING_LIST_CACHE_TTL,
+    )
+    return payload
+
+
+def _build_shopping_list_pdf(plan_id: uuid.UUID, shopping_list: list[dict]) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfgen import canvas
+
+    font_name = "Helvetica"
+    for font_path in PDF_FONT_CANDIDATES:
+        if font_path.exists():
+            try:
+                pdfmetrics.registerFont(TTFont(PDF_FONT_NAME, str(font_path)))
+            except (OSError, ValueError):
+                continue
+            font_name = PDF_FONT_NAME
+            break
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    _, height = A4
+    margin_x = 48
+    top = height - 56
+    line_height = 18
+
+    pdf.setTitle(f"NutriAgent shopping list {plan_id}")
+    pdf.setFont(font_name, 16)
+    pdf.drawString(margin_x, top, "NutriAgent Shopping List")
+
+    pdf.setFont(font_name, 10)
+    pdf.drawString(margin_x, top - 18, f"Plan ID: {plan_id}")
+
+    y = top - 52
+    pdf.setFont(font_name, 12)
+
+    for index, item in enumerate(shopping_list, start=1):
+        line = f"{index}. {item['name']} - {item['amount']} {item['unit']}"
+        if y <= 56:
+            pdf.showPage()
+            pdf.setFont(font_name, 12)
+            y = height - 56
+        pdf.drawString(margin_x, y, line)
+        y -= line_height
+
+    pdf.save()
+    return buffer.getvalue()
+
+
 @router.post("/generate-plan", response_model=GeneratePlanResponse)
-async def generate_plan(data: GeneratePlanRequest):
+async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(get_db)):
     task = celery_app.send_task(
         "generate_meal_plan",
         args=[str(data.user_id), data.days, data.mode],
+    )
+    await create_generation_run(
+        db,
+        user_id=str(data.user_id),
+        mode=data.mode,
+        task_id=task.id,
+        status="QUEUED",
     )
     logger.info(
         "Plan generation queued: task_id={} user_id={} mode={}",
@@ -144,15 +337,36 @@ async def get_demo_task_status(task_id: str):
 
 @router.get("/plans/{plan_id}", response_model=PlanResponse)
 async def get_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    # Try cache first
-    cached_plan_data = await cache.get_json(f"plan:{plan_id}")
+    cached_response = await cache.get_json(
+        _plan_response_cache_key(plan_id),
+        validator=_is_plan_response_payload,
+    )
+    if cached_response:
+        return PlanResponse(
+            id=uuid.UUID(cached_response["id"]),
+            user_id=uuid.UUID(cached_response["user_id"]),
+            status=cached_response["status"],
+            start_date=date.fromisoformat(cached_response["start_date"])
+            if cached_response["start_date"]
+            else None,
+            end_date=date.fromisoformat(cached_response["end_date"])
+            if cached_response["end_date"]
+            else None,
+            plan_data=cached_response["plan_data"],
+        )
 
     result = await db.execute(select(MealPlan).where(MealPlan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 
-    plan_data = cached_plan_data if cached_plan_data else plan.plan_data
+    plan_data = await build_plan_data_from_rows(
+        db,
+        plan,
+        fallback_plan_data=_fallback_plan_data(plan),
+    )
+    if plan.status == MealPlanStatus.ready and plan_data:
+        await _cache_plan_response(plan, plan_data)
 
     generation_meta = (plan_data or {}).get("generation_meta") or {}
 
@@ -169,17 +383,55 @@ async def get_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/plans/{plan_id}/observability", response_model=PlanObservabilityResponse)
+async def get_plan_observability(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    _, plan_data = await _load_ready_plan_with_data(plan_id, db)
+    return PlanObservabilityResponse.model_validate(build_plan_observability(plan_data))
+
+
 @router.get("/plans/{plan_id}/shopping-list")
 async def get_shopping_list(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    cached_payload = await cache.get_json(
+        _shopping_list_cache_key(plan_id),
+        validator=_is_shopping_list_payload,
+    )
+    if cached_payload:
+        return cached_payload
+
     result = await db.execute(select(MealPlan).where(MealPlan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    if plan.status != MealPlanStatus.ready or not plan.plan_data:
+    plan_data = await build_plan_data_from_rows(
+        db,
+        plan,
+        fallback_plan_data=_fallback_plan_data(plan),
+    )
+    if plan.status != MealPlanStatus.ready or not plan_data:
         raise HTTPException(status_code=400, detail="Plan is not ready yet")
 
-    shopping_list = aggregate_shopping_list(plan.plan_data)
-    return {"plan_id": str(plan_id), "items": shopping_list}
+    shopping_list = aggregate_shopping_list(plan_data)
+    return await _cache_shopping_list(plan_id, shopping_list)
+
+
+@router.get("/plans/{plan_id}/shopping-list.pdf")
+async def export_shopping_list_pdf(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    plan = await _load_ready_plan(plan_id, db)
+    plan_data = await build_plan_data_from_rows(
+        db,
+        plan,
+        fallback_plan_data=_fallback_plan_data(plan),
+    )
+    shopping_list = aggregate_shopping_list(plan_data or {})
+    pdf_content = _build_shopping_list_pdf(plan_id, shopping_list)
+
+    return Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="nutriagent-shopping-list-{plan_id}.pdf"'
+        },
+    )
 
 
 @router.get("/plans/{plan_id}/calendar.ics")
@@ -189,11 +441,16 @@ async def export_calendar(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    if plan.status != MealPlanStatus.ready or not plan.plan_data:
+    plan_data = await build_plan_data_from_rows(
+        db,
+        plan,
+        fallback_plan_data=_fallback_plan_data(plan),
+    )
+    if plan.status != MealPlanStatus.ready or not plan_data:
         raise HTTPException(status_code=400, detail="Plan is not ready yet")
 
     ics_content = generate_ics(
-        plan_data=plan.plan_data,
+        plan_data=plan_data,
         plan_id=str(plan_id),
         start_date=plan.start_date,
     )
@@ -224,9 +481,24 @@ async def _load_ready_plan(plan_id: uuid.UUID, db: AsyncSession) -> MealPlan:
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    if plan.status != MealPlanStatus.ready or not plan.plan_data:
+    if plan.status != MealPlanStatus.ready:
         raise HTTPException(status_code=400, detail="Plan is not ready yet")
     return plan
+
+
+async def _load_ready_plan_with_data(
+    plan_id: uuid.UUID,
+    db: AsyncSession,
+) -> tuple[MealPlan, dict]:
+    plan = await _load_ready_plan(plan_id, db)
+    plan_data = await build_plan_data_from_rows(
+        db,
+        plan,
+        fallback_plan_data=_fallback_plan_data(plan),
+    )
+    if not plan_data:
+        raise HTTPException(status_code=400, detail="Plan is not ready yet")
+    return plan, plan_data
 
 
 def _find_day_and_meal(plan_data: dict, day_number: int, meal_type: str) -> tuple[dict, dict, int]:
@@ -260,16 +532,14 @@ async def get_alternatives(
     db: AsyncSession = Depends(get_db),
 ):
     """Получить альтернативные рецепты для замены блюда."""
-    plan = await _load_ready_plan(plan_id, db)
-    _, current_meal, _ = _find_day_and_meal(plan.plan_data, day_number, meal_type)
+    _, plan_data = await _load_ready_plan_with_data(plan_id, db)
+    _, current_meal, _ = _find_day_and_meal(plan_data, day_number, meal_type)
 
     current_calories = current_meal.get("calories", 0)
     current_recipe_id = current_meal.get("recipe_id")
 
     # Get IDs of all recipes used in this day (to avoid duplicates)
-    day_data = next(
-        (d for d in plan.plan_data.get("days", []) if d.get("day_number") == day_number), {}
-    )
+    day_data = next((d for d in plan_data.get("days", []) if d.get("day_number") == day_number), {})
     used_ids = {m.get("recipe_id") for m in day_data.get("meals", [])}
 
     # Load user profile for allergy filtering
@@ -278,7 +548,7 @@ async def get_alternatives(
     all_recipes = await _get_all_recipes(db)
 
     # Filter: same meal_type, similar calories ±30%, not current, not used today
-    user_profile = plan.plan_data.get("user_profile", {})
+    user_profile = plan_data.get("user_profile", {})
     user_allergens = set(user_profile.get("allergies", []))
 
     alternatives = []
@@ -321,8 +591,8 @@ async def swap_meal(
     db: AsyncSession = Depends(get_db),
 ):
     """Заменить одно блюдо в плане."""
-    plan = await _load_ready_plan(plan_id, db)
-    day, old_meal, meal_idx = _find_day_and_meal(plan.plan_data, data.day_number, data.meal_type)
+    plan, plan_data = await _load_ready_plan_with_data(plan_id, db)
+    day, old_meal, meal_idx = _find_day_and_meal(plan_data, data.day_number, data.meal_type)
 
     # Find the new recipe
     from app.core.rag.retriever import _get_all_recipes
@@ -368,12 +638,10 @@ async def swap_meal(
     day["meals"][meal_idx] = new_meal
     _recalc_day_totals(day)
 
-    # Persist
-    from sqlalchemy.orm.attributes import flag_modified
-
-    flag_modified(plan, "plan_data")
+    await sync_plan_rows(db, plan_record=plan, plan_data=plan_data, event_type="meal_swapped")
     await db.commit()
-    await cache.delete(f"plan:{plan_id}")
+    await cache.delete(_plan_response_cache_key(plan_id))
+    await cache.delete(_shopping_list_cache_key(plan_id))
 
     logger.info(
         "Swapped meal: plan={} day={} type={} → {}",
@@ -393,17 +661,16 @@ async def cancel_meal(
     db: AsyncSession = Depends(get_db),
 ):
     """Убрать блюдо из плана (пересчитать итоги дня)."""
-    plan = await _load_ready_plan(plan_id, db)
-    day, _, meal_idx = _find_day_and_meal(plan.plan_data, data.day_number, data.meal_type)
+    plan, plan_data = await _load_ready_plan_with_data(plan_id, db)
+    day, _, meal_idx = _find_day_and_meal(plan_data, data.day_number, data.meal_type)
 
     day["meals"].pop(meal_idx)
     _recalc_day_totals(day)
 
-    from sqlalchemy.orm.attributes import flag_modified
-
-    flag_modified(plan, "plan_data")
+    await sync_plan_rows(db, plan_record=plan, plan_data=plan_data, event_type="meal_cancelled")
     await db.commit()
-    await cache.delete(f"plan:{plan_id}")
+    await cache.delete(_plan_response_cache_key(plan_id))
+    await cache.delete(_shopping_list_cache_key(plan_id))
 
     logger.info("Cancelled meal: plan={} day={} type={}", plan_id, data.day_number, data.meal_type)
 

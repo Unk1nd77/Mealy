@@ -6,18 +6,26 @@ Uses the same Redis instance as Celery (keys are namespaced by prefix).
 
 from __future__ import annotations
 
-import json
 import asyncio
+import json
+from collections.abc import Callable
 from typing import Any
 
 import redis.asyncio as aioredis
 from loguru import logger
+from redis.exceptions import RedisError
 
 from app.config import settings
 
 PREFIX = "nutri:"
 
 _clients_by_loop: dict[int, aioredis.Redis] = {}
+JSONValidator = Callable[[Any], bool]
+
+
+def build_key(*parts: object) -> str:
+    """Build a deterministic cache key from non-empty parts."""
+    return ":".join(str(part) for part in parts if str(part))
 
 
 async def get_redis() -> aioredis.Redis:
@@ -38,17 +46,34 @@ async def get_redis() -> aioredis.Redis:
     return client
 
 
-async def get_json(key: str) -> Any | None:
-    """Get a JSON-serialized value from cache. Returns None on miss."""
+async def get_json(
+    key: str,
+    *,
+    validator: JSONValidator | None = None,
+    delete_invalid: bool = True,
+) -> Any | None:
+    """Get and validate a JSON-serialized value from cache."""
     r = await get_redis()
-    raw = await r.get(f"{PREFIX}{key}")
+    full_key = f"{PREFIX}{key}"
+    raw = await r.get(full_key)
     if raw is None:
         return None
+
     try:
-        return json.loads(raw)
+        payload = json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         logger.warning("Cache: invalid JSON for key {}", key)
+        if delete_invalid:
+            await r.delete(full_key)
         return None
+
+    if validator and not validator(payload):
+        logger.warning("Cache: stale or invalid payload for key {}", key)
+        if delete_invalid:
+            await r.delete(full_key)
+        return None
+
+    return payload
 
 
 async def set_json(key: str, value: Any, ttl: int = 3600) -> None:
@@ -60,8 +85,13 @@ async def set_json(key: str, value: Any, ttl: int = 3600) -> None:
 
 async def delete(key: str) -> None:
     """Delete a key from cache."""
-    r = await get_redis()
-    await r.delete(f"{PREFIX}{key}")
+    try:
+        r = await get_redis()
+        await r.delete(f"{PREFIX}{key}")
+    except RedisError as exc:
+        logger.warning(
+            "Cache: delete skipped for key {} because Redis is unavailable: {}", key, exc
+        )
 
 
 async def close() -> None:

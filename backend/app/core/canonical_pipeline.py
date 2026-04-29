@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import cache
 from app.core.rag.retriever import search_recipes
 from app.core.recipe_catalog import RecipeCatalogError, scale_recipe_payload
+from app.core.relational_store import load_user_profile_from_rows, sync_plan_rows
 from app.db.models import DEFAULT_MEAL_SCHEDULE, MealPlan, MealPlanStatus, User
 
 _SCALING_FACTORS = (1.25, 1.5, 2.0)
@@ -20,11 +21,7 @@ _SCALING_FACTORS = (1.25, 1.5, 2.0)
 def _normalize_meal_type(value: str | None) -> set[str]:
     if not value:
         return set()
-    return {
-        chunk.strip().lower()
-        for chunk in value.replace(",", "/").split("/")
-        if chunk.strip()
-    }
+    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
 
 
 def _slot_compatible_types(slot_type: str) -> set[str]:
@@ -215,21 +212,7 @@ async def load_user_profile(session: AsyncSession, user_id: str) -> dict:
     if not user:
         raise ValueError(f"User {user_id} not found")
 
-    profile = {
-        "id": str(user.id),
-        "email": user.email,
-        "gender": user.gender.value,
-        "age": user.age,
-        "weight_kg": user.weight_kg,
-        "height_cm": user.height_cm,
-        "goal": user.goal.value,
-        "target_calories": user.target_calories,
-        "allergies": user.allergies or [],
-        "preferences": user.preferences or [],
-        "disliked_ingredients": user.disliked_ingredients or [],
-        "diseases": user.diseases or [],
-        "meal_schedule": user.meal_schedule or DEFAULT_MEAL_SCHEDULE,
-    }
+    profile = await load_user_profile_from_rows(session, user)
     await cache.set_json(f"user:{user_id}", profile, ttl=600)
     return profile
 
@@ -288,8 +271,13 @@ async def finalize_plan_record(
     status: MealPlanStatus,
 ) -> None:
     """Persist generated plan data and cache it when ready."""
-    plan_record.plan_data = plan_data
     plan_record.status = status
+    await sync_plan_rows(
+        session,
+        plan_record=plan_record,
+        plan_data=plan_data,
+        event_type="generated" if status == MealPlanStatus.ready else "generation_failed",
+    )
     await session.commit()
 
     if status == MealPlanStatus.ready:

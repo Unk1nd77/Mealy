@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.catalog import router as catalog_router
 from app.api.routes.plans import router as plans_router
 from app.api.routes.recipes import router as recipes_router
@@ -41,6 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(plans_router)
 app.include_router(recipes_router)

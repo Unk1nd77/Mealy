@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core import cache
+from app.core.relational_store import recipe_to_dict
 from app.db.models import Recipe
 from app.db.session import get_db
 
@@ -37,11 +39,19 @@ class BatchRequest(BaseModel):
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
 async def get_recipe(recipe_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Recipe).where(Recipe.id == recipe_id))
+    result = await db.execute(
+        select(Recipe)
+        .where(Recipe.id == recipe_id)
+        .options(
+            selectinload(Recipe.normalized_ingredients),
+            selectinload(Recipe.normalized_tags),
+            selectinload(Recipe.normalized_allergens),
+        )
+    )
     recipe = result.scalar_one_or_none()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    return recipe
+    return RecipeResponse.model_validate(recipe_to_dict(recipe))
 
 
 @router.post("/batch", response_model=list[RecipeResponse])
@@ -79,5 +89,13 @@ async def get_recipes_batch(data: BatchRequest, db: AsyncSession = Depends(get_d
         return results
 
     # Fallback: single DB query with IN clause
-    result = await db.execute(select(Recipe).where(Recipe.id.in_(data.recipe_ids)))
-    return list(result.scalars().all())
+    result = await db.execute(
+        select(Recipe)
+        .where(Recipe.id.in_(data.recipe_ids))
+        .options(
+            selectinload(Recipe.normalized_ingredients),
+            selectinload(Recipe.normalized_tags),
+            selectinload(Recipe.normalized_allergens),
+        )
+    )
+    return [RecipeResponse.model_validate(recipe_to_dict(recipe)) for recipe in result.scalars()]

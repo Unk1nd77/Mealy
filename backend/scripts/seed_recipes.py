@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy import select, text
 
 from app.core.recipe_catalog import RecipeCatalogError, normalize_recipe_payload
+from app.core.relational_store import sync_recipe_normalized
 from app.db.models import Recipe
 from app.db.session import async_session, engine
 
@@ -24,7 +25,7 @@ async def seed():
             print("Recipes already seeded, skipping.")
             return
 
-        with open(DATA_PATH, encoding="utf-8") as f:
+        with DATA_PATH.open(encoding="utf-8") as f:
             recipes_data = json.load(f)
 
         count = 0
@@ -41,20 +42,24 @@ async def seed():
                 id=uuid.uuid4(),
                 title=normalized["title"],
                 description=normalized.get("description", ""),
-                ingredients=normalized["ingredients"],
                 calories=normalized["calories"],
                 protein=normalized["protein"],
                 fat=normalized["fat"],
                 carbs=normalized["carbs"],
-                tags=normalized.get("tags", []),
                 meal_type=normalized.get("meal_type"),
-                allergens=normalized.get("allergens", []),
                 ingredients_short=normalized.get("ingredients_short"),
                 prep_time_min=normalized.get("prep_time_min"),
                 category=normalized.get("category"),
                 embedding=None,
             )
             session.add(recipe)
+            await sync_recipe_normalized(
+                session,
+                recipe,
+                ingredients=normalized["ingredients"],
+                tags=normalized.get("tags", []),
+                allergens=normalized.get("allergens", []),
+            )
             count += 1
 
         await session.commit()

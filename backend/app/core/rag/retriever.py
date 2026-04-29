@@ -7,11 +7,10 @@
 from __future__ import annotations
 
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
-from app.db.models import Recipe
+from app.core.relational_store import load_recipes_from_rows
 
 CACHE_KEY = "recipes:all"
 CACHE_TTL = 86400  # 24 hours
@@ -66,27 +65,12 @@ def _infer_meal_type(tags: list[str] | None, meal_type: str | None) -> str:
 
 async def _load_all_recipes(session: AsyncSession) -> list[dict]:
     """Load all recipes from DB and cache them."""
-    result = await session.execute(select(Recipe))
-    recipes = list(result.scalars().all())
-
     recipe_dicts = [
         {
-            "id": str(r.id),
-            "title": r.title,
-            "description": r.description,
-            "ingredients": r.ingredients,
-            "calories": r.calories,
-            "protein": r.protein,
-            "fat": r.fat,
-            "carbs": r.carbs,
-            "tags": r.tags or [],
-            "meal_type": _infer_meal_type(r.tags or [], r.meal_type),
-            "allergens": r.allergens or [],
-            "ingredients_short": r.ingredients_short or "",
-            "prep_time_min": r.prep_time_min,
-            "category": r.category,
+            **recipe,
+            "meal_type": _infer_meal_type(recipe.get("tags") or [], recipe.get("meal_type")),
         }
-        for r in recipes
+        for recipe in await load_recipes_from_rows(session)
     ]
 
     await cache.set_json(CACHE_KEY, recipe_dicts, ttl=CACHE_TTL)
@@ -208,7 +192,9 @@ async def search_recipes(
     if all_preferred_tags:
         preferred = [r for r in safe_recipes if _matches_preferred_tags(r, all_preferred_tags)]
         if preferred:
-            fallback = [r for r in safe_recipes if not _matches_preferred_tags(r, all_preferred_tags)]
+            fallback = [
+                r for r in safe_recipes if not _matches_preferred_tags(r, all_preferred_tags)
+            ]
             logger.debug(
                 "RAG: {} recipes match preferred_tags {}, adding {} fallback recipes for coverage",
                 len(preferred),
