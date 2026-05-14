@@ -2,7 +2,11 @@
 
 import pytest
 
-from app.core.recipe_catalog import RecipeCatalogError, normalize_recipe_payload, scale_recipe_payload
+from app.core.recipe_catalog import (
+    RecipeCatalogError,
+    normalize_recipe_payload,
+    scale_recipe_payload,
+)
 
 
 def test_normalize_recipe_payload_builds_ingredients_short_and_normalizes_lists():

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable
+from typing import Any
 
 from loguru import logger
 
@@ -36,11 +37,7 @@ def _meal_base_id(meal: dict[str, Any]) -> str:
 def _normalize_meal_type(value: str | None) -> set[str]:
     if not value:
         return set()
-    return {
-        chunk.strip().lower()
-        for chunk in value.replace(",", "/").split("/")
-        if chunk.strip()
-    }
+    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
 
 
 def _slot_compatible_types(slot_type: str) -> set[str]:
@@ -374,7 +371,9 @@ async def run_agent_cli_pipeline(
         state["plan_id"] = plan_id
 
         _set_step(state, "save", status="completed", message=f"План сохранён: {plan_id}.")
-        _set_step(state, "shopping-list", status="running", message="Строим shopping list из плана.")
+        _set_step(
+            state, "shopping-list", status="running", message="Строим shopping list из плана."
+        )
         shopping_list = build_shopping_list_payload(plan_data, input_format="week")
         _set_step(
             state,

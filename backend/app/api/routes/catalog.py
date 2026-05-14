@@ -6,7 +6,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.catalog_ingest import add_candidate_review, admit_recipe_candidate, create_recipe_candidate
+from app.core.catalog_ingest import (
+    add_candidate_review,
+    admit_recipe_candidate,
+    create_recipe_candidate,
+)
 from app.db.models import (
     RecipeCandidate,
     RecipeCandidateReview,
@@ -67,7 +71,7 @@ class ReviewResponse(BaseModel):
 
 @router.post("/candidates", response_model=CandidateResponse)
 async def create_candidate(data: CandidateCreateRequest, db: AsyncSession = Depends(get_db)):
-    candidate = await create_recipe_candidate(
+    return await create_recipe_candidate(
         db,
         payload=data.payload,
         source_url=data.source_url,
@@ -76,7 +80,6 @@ async def create_candidate(data: CandidateCreateRequest, db: AsyncSession = Depe
         provenance=data.provenance,
         submitted_by=data.submitted_by,
     )
-    return candidate
 
 
 @router.get("/candidates", response_model=list[CandidateResponse])

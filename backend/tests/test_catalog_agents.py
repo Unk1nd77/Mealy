@@ -171,7 +171,9 @@ async def test_build_research_agent_joins_ingredients_short_list(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_build_research_agent_preserves_structured_snapshot_and_scales_per_serving(monkeypatch):
+async def test_build_research_agent_preserves_structured_snapshot_and_scales_per_serving(
+    monkeypatch,
+):
     async def fake_call_llm(messages):
         return json.dumps(
             {
@@ -241,25 +243,27 @@ async def test_build_verification_agent_maps_llm_json(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_call_llm_json_retries_on_invalid_json(monkeypatch):
-    responses = iter([
-        '{"payload": {"title": "Broken"',
-        json.dumps(
-            {
-                "payload": {
-                    "title": "Chicken bowl",
-                    "ingredients": [
-                        {"name": "Chicken", "amount": 200, "unit": "g"},
-                        {"name": "Rice", "amount": 150, "unit": "g"},
-                    ],
-                    "calories": 520,
-                    "protein": 45,
-                    "fat": 6,
-                    "carbs": 70,
-                    "meal_type": "lunch",
+    responses = iter(
+        [
+            '{"payload": {"title": "Broken"',
+            json.dumps(
+                {
+                    "payload": {
+                        "title": "Chicken bowl",
+                        "ingredients": [
+                            {"name": "Chicken", "amount": 200, "unit": "g"},
+                            {"name": "Rice", "amount": 150, "unit": "g"},
+                        ],
+                        "calories": 520,
+                        "protein": 45,
+                        "fat": 6,
+                        "carbs": 70,
+                        "meal_type": "lunch",
+                    }
                 }
-            }
-        ),
-    ])
+            ),
+        ]
+    )
 
     async def fake_call_llm(messages):
         return next(responses)

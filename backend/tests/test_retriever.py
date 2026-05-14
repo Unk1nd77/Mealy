@@ -8,8 +8,8 @@ os.environ["DEBUG"] = "true"
 
 import pytest
 
-from app.core.rag import retriever
 from app.core.canonical_pipeline import assess_recipe_pool, select_recipes_for_generation
+from app.core.rag import retriever
 
 
 def test_infer_meal_type_from_tags_for_cached_recipe():

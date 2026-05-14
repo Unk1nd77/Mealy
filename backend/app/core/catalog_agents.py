@@ -72,9 +72,11 @@ def _ingredient_mass_grams(ingredients: list[dict[str, Any]]) -> float:
     return total
 
 
-def _repair_recipe_payload_from_snapshot(payload: dict[str, Any], source_snapshot: dict[str, Any] | None) -> dict[str, Any]:
+def _repair_recipe_payload_from_snapshot(
+    payload: dict[str, Any], source_snapshot: dict[str, Any] | None
+) -> dict[str, Any]:
     repaired = dict(payload)
-    structured = ((source_snapshot or {}).get("structured_recipe") or {})
+    structured = (source_snapshot or {}).get("structured_recipe") or {}
     structured_ingredients = structured.get("ingredients") or []
     if structured_ingredients and (
         not repaired.get("ingredients")
@@ -83,7 +85,10 @@ def _repair_recipe_payload_from_snapshot(payload: dict[str, Any], source_snapsho
         repaired["ingredients"] = [
             {"name": item["name"], "amount": item["amount"], "unit": item["unit"]}
             for item in structured_ingredients
-            if isinstance(item, dict) and item.get("name") and item.get("amount") and item.get("unit")
+            if isinstance(item, dict)
+            and item.get("name")
+            and item.get("amount")
+            and item.get("unit")
         ]
 
     nutrition = structured.get("nutrition") or {}
@@ -91,14 +96,17 @@ def _repair_recipe_payload_from_snapshot(payload: dict[str, Any], source_snapsho
         if repaired.get(key) in (None, "", 0) and nutrition.get(key) is not None:
             repaired[key] = nutrition[key]
 
-    if repaired.get("prep_time_min") in (None, "", 0) and structured.get("prep_time_min") is not None:
+    if (
+        repaired.get("prep_time_min") in (None, "", 0)
+        and structured.get("prep_time_min") is not None
+    ):
         repaired["prep_time_min"] = structured["prep_time_min"]
 
     ingredients_short = repaired.get("ingredients_short")
     if isinstance(ingredients_short, list):
-        repaired["ingredients_short"] = ", ".join(
-            str(item).strip() for item in ingredients_short if str(item).strip()
-        ) or None
+        repaired["ingredients_short"] = (
+            ", ".join(str(item).strip() for item in ingredients_short if str(item).strip()) or None
+        )
 
     servings = structured.get("servings")
     ingredients = repaired.get("ingredients") or []
@@ -120,7 +128,7 @@ def _repair_recipe_payload_from_snapshot(payload: dict[str, Any], source_snapsho
 
 
 def _load_prompt_templates() -> dict[str, Template]:
-    with open(PROMPTS_DIR / "catalog_ingest.yml", encoding="utf-8") as f:
+    with (PROMPTS_DIR / "catalog_ingest.yml").open(encoding="utf-8") as f:
         raw = yaml.safe_load(f)
     return {key: Template(value) for key, value in raw.items()}
 
@@ -146,7 +154,9 @@ async def _call_llm(messages: list[dict[str, str]]) -> str:
         return data["choices"][0]["message"]["content"]
 
 
-async def _call_llm_json(messages: list[dict[str, str]], output_model: type[BaseModel]) -> BaseModel:
+async def _call_llm_json(
+    messages: list[dict[str, str]], output_model: type[BaseModel]
+) -> BaseModel:
     last_error: Exception | None = None
     attempt_messages = list(messages)
     max_attempts = 2

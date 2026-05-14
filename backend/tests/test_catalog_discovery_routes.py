@@ -19,7 +19,9 @@ async def test_queue_source_discovery_ingest_job(monkeypatch):
     )
 
     response = await catalog.queue_source_discovery_ingest_job(
-        catalog.CatalogIngestJobRequest(seed_input={"query": "borsch", "source_urls": ["https://example.com/recipe"]})
+        catalog.CatalogIngestJobRequest(
+            seed_input={"query": "borsch", "source_urls": ["https://example.com/recipe"]}
+        )
     )
 
     assert response.task_id == "task-456"

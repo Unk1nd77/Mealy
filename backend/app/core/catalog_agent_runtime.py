@@ -8,12 +8,12 @@ progress traces and error handling.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from app.core.catalog_ingest import (
-    CatalogIngestResult,
     ResearchOutput,
     VerificationOutput,
     add_candidate_review,
@@ -87,12 +87,27 @@ async def run_catalog_agent_pipeline(
     }
 
     try:
-        _set_step(state, "research", status="running", message="Research agent is gathering a recipe candidate.")
+        _set_step(
+            state,
+            "research",
+            status="running",
+            message="Research agent is gathering a recipe candidate.",
+        )
         _emit(progress_callback, state)
         research = await research_agent(seed_input)
-        _set_step(state, "research", status="completed", message="Research agent produced a structured candidate.")
+        _set_step(
+            state,
+            "research",
+            status="completed",
+            message="Research agent produced a structured candidate.",
+        )
 
-        _set_step(state, "candidate", status="running", message="Storing candidate and running schema validation.")
+        _set_step(
+            state,
+            "candidate",
+            status="running",
+            message="Storing candidate and running schema validation.",
+        )
         _emit(progress_callback, state)
         candidate = await create_recipe_candidate(
             session,
@@ -109,7 +124,10 @@ async def run_catalog_agent_pipeline(
                 state,
                 "candidate",
                 status="failed",
-                message=((candidate.validation_report or {}).get("notes") or ["Candidate validation failed."])[0],
+                message=(
+                    (candidate.validation_report or {}).get("notes")
+                    or ["Candidate validation failed."]
+                )[0],
             )
             state["status"] = "FAILED"
             state["reason_codes"] = (candidate.validation_report or {}).get("reason_codes") or []
@@ -124,9 +142,19 @@ async def run_catalog_agent_pipeline(
                 current_step=state["current_step"],
             )
 
-        _set_step(state, "candidate", status="completed", message="Candidate stored and passed schema validation.")
+        _set_step(
+            state,
+            "candidate",
+            status="completed",
+            message="Candidate stored and passed schema validation.",
+        )
 
-        _set_step(state, "verify", status="running", message="Verification agent is reviewing the candidate.")
+        _set_step(
+            state,
+            "verify",
+            status="running",
+            message="Verification agent is reviewing the candidate.",
+        )
         _emit(progress_callback, state)
         verification = await verification_agent(candidate)
         review = await add_candidate_review(
@@ -171,12 +199,24 @@ async def run_catalog_agent_pipeline(
                 current_step=state["current_step"],
             )
 
-        _set_step(state, "verify", status="completed", message="Verification agent approved the candidate.")
-        _set_step(state, "admit", status="running", message="Admitting candidate into canonical recipe catalog.")
+        _set_step(
+            state,
+            "verify",
+            status="completed",
+            message="Verification agent approved the candidate.",
+        )
+        _set_step(
+            state,
+            "admit",
+            status="running",
+            message="Admitting candidate into canonical recipe catalog.",
+        )
         _emit(progress_callback, state)
         recipe = await admit_recipe_candidate(session, candidate_id=str(candidate.id))
         state["recipe_id"] = str(recipe.id)
-        _set_step(state, "admit", status="completed", message="Candidate admitted into recipe catalog.")
+        _set_step(
+            state, "admit", status="completed", message="Candidate admitted into recipe catalog."
+        )
         state["status"] = RecipeCandidateStatus.accepted.value
         _emit(progress_callback, state)
         return CatalogAgentRuntimeResult(

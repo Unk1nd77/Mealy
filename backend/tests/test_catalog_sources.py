@@ -52,7 +52,9 @@ async def test_resolve_catalog_source_fetches_url(monkeypatch):
 
     monkeypatch.setattr(catalog_sources.httpx, "AsyncClient", lambda **kwargs: _FakeClient())
 
-    resolved = await catalog_sources.resolve_catalog_source({"source_url": "https://example.com/recipe"})
+    resolved = await catalog_sources.resolve_catalog_source(
+        {"source_url": "https://example.com/recipe"}
+    )
 
     assert resolved.source_type == "web"
     assert resolved.source_snapshot["title"] == "Chicken Bowl"

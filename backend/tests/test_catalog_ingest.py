@@ -93,11 +93,13 @@ def _patch_models(monkeypatch):
     monkeypatch.setattr(catalog_ingest, "RecipeCandidate", _FakeCandidate)
     monkeypatch.setattr(catalog_ingest, "RecipeCandidateReview", _FakeReview)
     monkeypatch.setattr(catalog_ingest, "Recipe", _FakeRecipe)
+
     async def fake_find_duplicate_recipe(session, *, title, ingredients_short):
         for recipe in session.recipes:
             if recipe.title == title and recipe.ingredients_short == ingredients_short:
                 return recipe
         return None
+
     monkeypatch.setattr(catalog_ingest, "_find_duplicate_recipe", fake_find_duplicate_recipe)
 
 

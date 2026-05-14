@@ -18,11 +18,7 @@ from app.core.skills.validator import validate_day_plan
 def _normalize_meal_type(value: str | None) -> set[str]:
     if not value:
         return set()
-    return {
-        chunk.strip().lower()
-        for chunk in value.replace(",", "/").split("/")
-        if chunk.strip()
-    }
+    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
 
 
 def _slot_compatible_types(slot_type: str) -> set[str]:
@@ -107,7 +103,9 @@ def _build_day_plan(
     )
 
 
-def _validate(day_plan: dict[str, Any], *, target_calories: int, meal_schedule: list[dict[str, Any]]):
+def _validate(
+    day_plan: dict[str, Any], *, target_calories: int, meal_schedule: list[dict[str, Any]]
+):
     normalized = _normalize_day_totals(day_plan)
     validated = DayPlan.model_validate(normalized)
     return validate_day_plan(
@@ -164,9 +162,7 @@ def repair_day_plan(
         return normalized_plan, [], None
 
     current_recipe_ids = {
-        str(meal["recipe_id"])
-        for meal in normalized_plan.get("meals", [])
-        if meal.get("recipe_id")
+        str(meal["recipe_id"]) for meal in normalized_plan.get("meals", []) if meal.get("recipe_id")
     }
     candidate_lists = _candidate_lists(
         recipes=recipes,
@@ -241,14 +237,10 @@ def repair_day_plan(
         return None, [], final_error or best_error or "Auto-fix не смог восстановить план."
 
     original_meals = {
-        meal["type"]: str(meal["recipe_id"])
-        for meal in normalized_plan.get("meals", [])
+        meal["type"]: str(meal["recipe_id"]) for meal in normalized_plan.get("meals", [])
     }
     applied_fixes = [
-        (
-            f"{slot['type']}: {original_meals.get(slot['type'], 'missing')} -> "
-            f"{meal['recipe_id']}"
-        )
+        (f"{slot['type']}: {original_meals.get(slot['type'], 'missing')} -> {meal['recipe_id']}")
         for slot, meal in zip(meal_schedule, best_plan["meals"], strict=False)
         if original_meals.get(slot["type"]) != str(meal["recipe_id"])
     ]
@@ -263,8 +255,6 @@ def repair_day_plan(
             if _meal_base_id(meal) in avoid_recipe_base_ids
         ]
         if reused:
-            applied_fixes.append(
-                f"repeat-aware fallback kept: {', '.join(reused)}"
-            )
+            applied_fixes.append(f"repeat-aware fallback kept: {', '.join(reused)}")
 
     return best_plan, applied_fixes, None

@@ -28,7 +28,9 @@ async def test_run_source_discovery_pipeline_success(monkeypatch):
     progress = []
 
     async def fake_discovery(seed_input):
-        return [DiscoverySourceOutput(url="https://example.com/recipe", discovered_by="discovery-agent")]
+        return [
+            DiscoverySourceOutput(url="https://example.com/recipe", discovered_by="discovery-agent")
+        ]
 
     async def fake_create_source_candidate(*args, **kwargs):
         return _FakeSourceCandidate()
@@ -63,9 +65,15 @@ async def test_run_source_discovery_pipeline_success(monkeypatch):
     async def fake_attach(*args, **kwargs):
         return _FakeSourceCandidate(status=SourceCandidateStatus.accepted)
 
-    monkeypatch.setattr(source_discovery_runtime, "create_source_candidate", fake_create_source_candidate)
-    monkeypatch.setattr(source_discovery_runtime, "run_catalog_agent_pipeline", fake_catalog_pipeline)
-    monkeypatch.setattr(source_discovery_runtime, "attach_source_candidate_to_recipe_candidate", fake_attach)
+    monkeypatch.setattr(
+        source_discovery_runtime, "create_source_candidate", fake_create_source_candidate
+    )
+    monkeypatch.setattr(
+        source_discovery_runtime, "run_catalog_agent_pipeline", fake_catalog_pipeline
+    )
+    monkeypatch.setattr(
+        source_discovery_runtime, "attach_source_candidate_to_recipe_candidate", fake_attach
+    )
 
     result = await source_discovery_runtime.run_source_discovery_pipeline(
         session=object(),
@@ -79,20 +87,30 @@ async def test_run_source_discovery_pipeline_success(monkeypatch):
     assert result.status == "ACCEPTED"
     assert result.source_candidate_id == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     assert result.recipe_id == "recipe-1"
-    assert any(step["key"] == "source" and step["status"] == "completed" for step in progress[-1]["steps"])
+    assert any(
+        step["key"] == "source" and step["status"] == "completed" for step in progress[-1]["steps"]
+    )
 
 
 @pytest.mark.asyncio
 async def test_run_source_discovery_pipeline_fails_on_rejected_source(monkeypatch):
     async def fake_discovery(seed_input):
-        return [DiscoverySourceOutput(url="https://example.com/recipe", discovered_by="discovery-agent")]
+        return [
+            DiscoverySourceOutput(url="https://example.com/recipe", discovered_by="discovery-agent")
+        ]
 
     async def fake_create_source_candidate(*args, **kwargs):
         source = _FakeSourceCandidate(status=SourceCandidateStatus.rejected)
-        source.validation_report = {"ok": False, "reason_codes": ["source_domain_not_allowed"], "notes": ["bad"]}
+        source.validation_report = {
+            "ok": False,
+            "reason_codes": ["source_domain_not_allowed"],
+            "notes": ["bad"],
+        }
         return source
 
-    monkeypatch.setattr(source_discovery_runtime, "create_source_candidate", fake_create_source_candidate)
+    monkeypatch.setattr(
+        source_discovery_runtime, "create_source_candidate", fake_create_source_candidate
+    )
 
     result = await source_discovery_runtime.run_source_discovery_pipeline(
         session=object(),

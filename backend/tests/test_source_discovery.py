@@ -31,7 +31,13 @@ async def test_validate_source_url_rejects_non_https(monkeypatch):
     monkeypatch.setattr(
         source_discovery,
         "validate_url_against_policy",
-        lambda url: (False, {"reason_codes": ["source_url_not_https"], "notes": ["Only https source URLs are allowed"]}),
+        lambda url: (
+            False,
+            {
+                "reason_codes": ["source_url_not_https"],
+                "notes": ["Only https source URLs are allowed"],
+            },
+        ),
     )
     ok, report = source_discovery.validate_source_url("http://example.com/recipe")
     assert ok is False
@@ -45,7 +51,10 @@ async def test_validate_source_url_rejects_non_allowlisted_domain(monkeypatch):
         "validate_url_against_policy",
         lambda url: (
             False,
-            {"reason_codes": ["source_domain_not_allowed"], "notes": ["Source domain is not allowlisted: evil.com"]},
+            {
+                "reason_codes": ["source_domain_not_allowed"],
+                "notes": ["Source domain is not allowlisted: evil.com"],
+            },
         ),
     )
     ok, report = source_discovery.validate_source_url("https://evil.com/recipe")

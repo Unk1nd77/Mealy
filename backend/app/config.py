@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     CATALOG_SOURCE_TEXT_CHAR_LIMIT: int = 6000
     CATALOG_ALLOWED_SOURCE_DOMAINS: str = ""
     SECRET_KEY: str = "change-me"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     DEBUG: bool = False
 
     @property

@@ -22,7 +22,6 @@ from loguru import logger
 
 logger.remove()
 
-from app.db.session import async_session, engine  # noqa: E402
 from app.core.cli_contract import (  # noqa: E402
     build_context_payload,
     build_shopping_list_payload,
@@ -30,6 +29,7 @@ from app.core.cli_contract import (  # noqa: E402
     save_plan_payload,
     validate_plan_payload,
 )
+from app.db.session import async_session, engine  # noqa: E402
 
 engine.echo = False
 

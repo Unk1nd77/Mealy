@@ -1,106 +1,150 @@
-import { startTransition, useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode, SVGProps } from "react";
+import { startTransition, useEffect, useRef, useState } from "react"
+import type { FormEvent, ReactNode, SVGProps } from "react"
 
-type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
-type Goal = "lose" | "maintain" | "gain";
-type Gender = "male" | "female";
+type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active"
+type Goal = "lose" | "maintain" | "gain"
+type Gender = "male" | "female"
 
 type MealSlot = {
-  type: string;
-  time: string;
-  calories_pct: number;
-};
+  type: string
+  time: string
+  calories_pct: number
+}
 
 type Ingredient = {
-  name: string;
-  amount: number;
-  unit: string;
-};
+  name: string
+  amount: number
+  unit: string
+}
 
 type MealItem = {
-  type: string;
-  time?: string;
-  recipe_id: string;
-  title: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  carbs: number;
-  ingredients_summary: Ingredient[];
-};
+  type: string
+  time?: string
+  recipe_id: string
+  title: string
+  calories: number
+  protein: number
+  fat: number
+  carbs: number
+  ingredients_summary: Ingredient[]
+}
 
 type DayPlan = {
-  day_number: number;
-  total_calories: number;
-  total_protein: number;
-  total_fat: number;
-  total_carbs: number;
-  meals: MealItem[];
-};
+  day_number: number
+  total_calories: number
+  total_protein: number
+  total_fat: number
+  total_carbs: number
+  meals: MealItem[]
+}
 
 type WeeklyPlan = {
   user_profile?: {
-    goal?: Goal;
-  };
-  total_days: number;
-  daily_target_calories: number;
-  days: DayPlan[];
-};
+    goal?: Goal
+  }
+  total_days: number
+  daily_target_calories: number
+  days: DayPlan[]
+}
 
 type RecipeDetail = {
-  id: string;
-  title: string;
-  description?: string;
-  ingredients: Ingredient[];
-  calories: number;
-  protein: number;
-  fat: number;
-  carbs: number;
-  tags?: string[];
-  meal_type?: string;
-  allergens?: string[];
-  ingredients_short?: string;
-  prep_time_min?: number;
-  category?: string;
-};
+  id: string
+  title: string
+  description?: string
+  ingredients: Ingredient[]
+  calories: number
+  protein: number
+  fat: number
+  carbs: number
+  tags?: string[]
+  meal_type?: string
+  allergens?: string[]
+  ingredients_short?: string
+  prep_time_min?: number
+  category?: string
+}
 
 type ShoppingItem = {
-  name: string;
-  amount: number;
-  unit: string;
-};
+  name: string
+  amount: number
+  unit: string
+}
 
 type UserResponse = {
-  id: string;
-  email: string;
-  age: number;
-  weight_kg: number;
-  height_cm: number;
-  gender: Gender;
-  activity_level: ActivityLevel;
-  goal: Goal;
-  allergies: string[];
-  preferences: string[];
-  disliked_ingredients: string[];
-  diseases: string[];
-  target_calories: number | null;
-  meal_schedule: MealSlot[] | null;
-};
+  id: string
+  email: string
+  age: number
+  weight_kg: number
+  height_cm: number
+  gender: Gender
+  activity_level: ActivityLevel
+  goal: Goal
+  allergies: string[]
+  preferences: string[]
+  disliked_ingredients: string[]
+  diseases: string[]
+  target_calories: number | null
+  meal_schedule: MealSlot[] | null
+}
 
 type PlanResponse = {
-  id: string;
-  user_id: string;
-  status: string;
-  start_date: string | null;
-  end_date: string | null;
-  plan_data: WeeklyPlan | null;
-};
+  id: string
+  user_id: string
+  status: string
+  start_date: string | null
+  end_date: string | null
+  plan_data: WeeklyPlan | null
+}
+
+type TaskResponse = {
+  status: string
+  plan_id?: string
+  error?: string
+  current_step?: string
+  steps?: ObservabilityStep[]
+}
+
+type AuthResponse = {
+  access_token?: string
+  token_type?: string
+  user_id?: string
+  user?: UserResponse
+}
+
+type ObservabilityStep = {
+  key: string
+  status: string
+  message: string
+}
+
+type ObservabilityDayCheck = {
+  day_number: number
+  total_calories: number
+  target_calories: number
+  deviation_kcal: number
+  deviation_pct: number
+  within_target: boolean
+}
+
+type ObservabilityResponse = {
+  source: string
+  summary: string
+  steps: ObservabilityStep[]
+  day_checks: ObservabilityDayCheck[]
+  has_persisted_trace: boolean
+}
+
+type MealContext = {
+  day: DayPlan
+  meal: MealItem
+}
 
 type StoredSession = {
-  userId?: string;
-  planId?: string;
-  taskId?: string;
-};
+  userId?: string | undefined
+  planId?: string | undefined
+  taskId?: string | undefined
+  accessToken?: string | undefined
+}
 
 type Screen =
   | { name: "onboarding" }
@@ -108,48 +152,61 @@ type Screen =
   | { name: "home" }
   | { name: "weekly" }
   | { name: "shopping" }
+  | { name: "integrations" }
   | { name: "profile" }
-  | { name: "recipe"; recipeId: string };
+  | { name: "recipe"; recipeId: string }
 
 type OnboardingForm = {
-  email: string;
-  password: string;
-  age: string;
-  weight_kg: string;
-  height_cm: string;
-  gender: Gender;
-  activity_level: ActivityLevel;
-  goal: Goal;
-  allergies: string;
-  preferences: string;
-  disliked_ingredients: string;
-  diseases: string;
-};
+  email: string
+  password: string
+  age: string
+  weight_kg: string
+  height_cm: string
+  gender: Gender
+  activity_level: ActivityLevel
+  goal: Goal
+  allergies: string
+  preferences: string
+  disliked_ingredients: string
+  diseases: string
+}
 
 type ProfileDraft = {
-  age: string;
-  weight_kg: string;
-  height_cm: string;
-  gender: Gender;
-  activity_level: ActivityLevel;
-  goal: Goal;
-  allergies: string;
-  preferences: string;
-  disliked_ingredients: string;
-  diseases: string;
-};
+  age: string
+  weight_kg: string
+  height_cm: string
+  gender: Gender
+  activity_level: ActivityLevel
+  goal: Goal
+  allergies: string
+  preferences: string
+  disliked_ingredients: string
+  diseases: string
+}
+
+type AuthMode = "register" | "login"
 
 type QuickAction = {
-  label: string;
-  description: string;
-  icon: ReactNode;
-  onClick: () => void;
-};
+  label: string
+  description: string
+  icon: ReactNode
+  onClick: () => void
+}
 
-const API_BASE = import.meta.env.PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-const STORAGE_KEY = "nutri-agent/mobile-session/v2";
-const PLAN_DAYS = 3;
-const ONBOARDING_STEPS = 4;
+type BottomNavItem = {
+  screen: Exclude<Screen, { name: "onboarding" } | { name: "generating" } | { name: "recipe" }>
+  label: string
+  icon: ReactNode
+  requiresPlan?: boolean
+}
+
+const API_BASE = import.meta.env.PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+const USE_DEMO_PIPELINE = import.meta.env.PUBLIC_USE_DEMO_PIPELINE === "true"
+const STORAGE_KEY = "nutri-agent/mobile-session/v2"
+const PLAN_DAYS = 3
+const REGISTER_STEPS = 4
+const RESULT_DISCLAIMER =
+  "AI guidance is informational only. Check allergies, medical restrictions, and personal needs before following any plan."
 
 const emptyOnboardingForm: OnboardingForm = {
   email: "",
@@ -164,172 +221,205 @@ const emptyOnboardingForm: OnboardingForm = {
   preferences: "",
   disliked_ingredients: "",
   diseases: "",
-};
+}
 
 function splitList(input: string): string[] {
   return input
     .split(/[,;\n]/g)
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean)
 }
 
 function joinList(input?: string[]): string {
-  return (input ?? []).join(", ");
+  return (input ?? []).join(", ")
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+    setTimeout(resolve, ms)
+  })
 }
 
 function readStoredSession(): StoredSession | null {
   if (typeof window === "undefined") {
-    return null;
+    return null
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as StoredSession) : null;
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as StoredSession) : null
   } catch {
-    return null;
+    return null
   }
 }
 
 function writeStoredSession(next: StoredSession): void {
   if (typeof window === "undefined") {
-    return;
+    return
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
 }
 
 function patchStoredSession(patch: Partial<StoredSession>): void {
-  const current = readStoredSession() ?? {};
-  const next = { ...current, ...patch };
+  const current = readStoredSession() ?? {}
+  const next = { ...current, ...patch }
 
   if (!next.userId && !next.planId && !next.taskId) {
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(STORAGE_KEY)
     }
-    return;
+    return
   }
 
-  writeStoredSession(next);
+  writeStoredSession(next)
 }
 
 function clearStoredSession(): void {
   if (typeof window !== "undefined") {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(STORAGE_KEY)
   }
 }
 
 async function readError(response: Response): Promise<string> {
   try {
-    const text = await response.text();
-    return text || `HTTP ${response.status}`;
+    const text = await response.text()
+    return text || `HTTP ${response.status}`
   } catch {
-    return `HTTP ${response.status}`;
+    return `HTTP ${response.status}`
   }
 }
 
 function formatGoal(goal: Goal | string | undefined): string {
   switch (goal) {
     case "lose":
-      return "Fat loss";
+      return "Fat loss"
     case "gain":
-      return "Muscle gain";
+      return "Muscle gain"
     default:
-      return "Balance";
+      return "Balance"
   }
 }
 
 function formatActivity(activity: ActivityLevel | string | undefined): string {
   switch (activity) {
     case "sedentary":
-      return "Low activity";
+      return "Low activity"
     case "light":
-      return "Light activity";
+      return "Light activity"
     case "active":
-      return "High activity";
+      return "High activity"
     case "very_active":
-      return "Very active";
+      return "Very active"
     default:
-      return "Moderate activity";
+      return "Moderate activity"
   }
 }
 
 function formatMealType(type: string): string {
   switch (type) {
     case "breakfast":
-      return "Breakfast";
+      return "Breakfast"
     case "lunch":
-      return "Lunch";
+      return "Lunch"
     case "dinner":
-      return "Dinner";
+      return "Dinner"
     case "snack":
-      return "Snack";
+      return "Snack"
     case "second_snack":
-      return "Late snack";
+      return "Late snack"
     default:
-      return type.replaceAll("_", " ");
+      return type.replaceAll("_", " ")
   }
+}
+
+function generationEndpoint(): string {
+  return USE_DEMO_PIPELINE ? "/api/demo/generate-plan" : "/api/generate-plan"
+}
+
+function taskEndpoint(taskId: string): string {
+  return USE_DEMO_PIPELINE ? `/api/demo/tasks/${taskId}` : `/api/tasks/${taskId}`
+}
+
+function normalizeTaskStatus(status: string): string {
+  if (status === "RUNNING" || status === "STARTED") {
+    return "GENERATING"
+  }
+  return status
+}
+
+function normalizeObservabilityStep(step: ObservabilityStep, index: number): ObservabilityStep {
+  return {
+    key: step.key?.trim() || `step-${index + 1}`,
+    status: step.status?.trim().toLowerCase() || "completed",
+    message: step.message?.trim() || "Generation stage completed.",
+  }
+}
+
+function extractBearerToken(response: AuthResponse): string | null {
+  return response.access_token?.trim() || null
 }
 
 function mealVisualClass(type: string): string {
   switch (type) {
     case "breakfast":
-      return "meal-visual breakfast";
+      return "meal-visual breakfast"
     case "lunch":
-      return "meal-visual lunch";
+      return "meal-visual lunch"
     case "dinner":
-      return "meal-visual dinner";
+      return "meal-visual dinner"
     case "snack":
-      return "meal-visual snack";
+      return "meal-visual snack"
     default:
-      return "meal-visual";
+      return "meal-visual"
   }
 }
 
+const MACRO_SERIES = [
+  { key: "protein", label: "Protein", short: "P", color: "#C67C4E" },
+  { key: "fat", label: "Fat", short: "F", color: "#D59A5C" },
+  { key: "carbs", label: "Carbs", short: "C", color: "#5D876A" },
+] as const
+
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+  return Math.min(Math.max(value, min), max)
 }
 
 function getTodayIndex(plan: PlanResponse | null): number {
-  const totalDays = plan?.plan_data?.days.length ?? 1;
+  const totalDays = plan?.plan_data?.days.length ?? 1
   if (!plan?.start_date) {
-    return 1;
+    return 1
   }
 
-  const start = new Date(`${plan.start_date}T00:00:00`);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diff = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
-  return clamp(diff + 1, 1, totalDays);
+  const start = new Date(`${plan.start_date}T00:00:00`)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diff = Math.floor((today.getTime() - start.getTime()) / 86_400_000)
+  return clamp(diff + 1, 1, totalDays)
 }
 
 function formatShortDate(offset = 0): string {
-  const date = new Date();
-  date.setDate(date.getDate() + offset);
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(date);
+  }).format(date)
 }
 
 function formatPlanDayLabel(plan: PlanResponse | null, dayNumber: number): string {
   if (!plan?.start_date) {
-    return formatShortDate(dayNumber - 1);
+    return formatShortDate(dayNumber - 1)
   }
 
-  const date = new Date(`${plan.start_date}T00:00:00`);
-  date.setDate(date.getDate() + dayNumber - 1);
+  const date = new Date(`${plan.start_date}T00:00:00`)
+  date.setDate(date.getDate() + dayNumber - 1)
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(date);
+  }).format(date)
 }
 
 function AppIcon(props: SVGProps<SVGSVGElement>) {
@@ -352,7 +442,7 @@ function AppIcon(props: SVGProps<SVGSVGElement>) {
         strokeWidth="1.8"
       />
     </svg>
-  );
+  )
 }
 
 function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
@@ -367,16 +457,31 @@ function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
         strokeWidth="1.8"
       />
     </svg>
-  );
+  )
 }
 
 function CalendarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <rect x="4" y="5" width="16" height="15" rx="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 3.5v4M16 3.5v4M4 9.5h16" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="15"
+        rx="4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8 3.5v4M16 3.5v4M4 9.5h16"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
     </svg>
-  );
+  )
 }
 
 function CartIcon(props: SVGProps<SVGSVGElement>) {
@@ -393,16 +498,87 @@ function CartIcon(props: SVGProps<SVGSVGElement>) {
       <circle cx="10" cy="18.3" r="1.2" fill="currentColor" />
       <circle cx="16.6" cy="18.3" r="1.2" fill="currentColor" />
     </svg>
-  );
+  )
+}
+
+function ShareIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path
+        d="M12 15.5v-11M8.2 8.4 12 4.6l3.8 3.8M6.5 11.5v5.8a2.2 2.2 0 0 0 2.2 2.2h6.6a2.2 2.2 0 0 0 2.2-2.2v-5.8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+function ClipboardIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path
+        d="M9.5 5.5h5M9 4h6a1.5 1.5 0 0 1 1.5 1.5V7h-9V5.5A1.5 1.5 0 0 1 9 4Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M7.5 6.5H7a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8.7 12.5h6.6M8.7 16h4.8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+function FileIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path
+        d="M7 4.5h6l4 4V18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M13 4.8V9h4M8.5 13h7M8.5 16h5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
 }
 
 function UserIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <circle cx="12" cy="8.3" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M5.5 19c1.8-2.8 4-4.2 6.5-4.2S16.7 16.2 18.5 19" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <path
+        d="M5.5 19c1.8-2.8 4-4.2 6.5-4.2S16.7 16.2 18.5 19"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
     </svg>
-  );
+  )
 }
 
 function SparkIcon(props: SVGProps<SVGSVGElement>) {
@@ -413,7 +589,7 @@ function SparkIcon(props: SVGProps<SVGSVGElement>) {
         fill="currentColor"
       />
     </svg>
-  );
+  )
 }
 
 function RefreshIcon(props: SVGProps<SVGSVGElement>) {
@@ -428,7 +604,7 @@ function RefreshIcon(props: SVGProps<SVGSVGElement>) {
         strokeWidth="1.8"
       />
     </svg>
-  );
+  )
 }
 
 function CheckIcon(props: SVGProps<SVGSVGElement>) {
@@ -443,16 +619,22 @@ function CheckIcon(props: SVGProps<SVGSVGElement>) {
         strokeWidth="1.8"
       />
     </svg>
-  );
+  )
 }
 
 function TimeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M12 8v4.4l2.8 1.8" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <path
+        d="M12 8v4.4l2.8 1.8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
     </svg>
-  );
+  )
 }
 
 function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
@@ -467,7 +649,7 @@ function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
         strokeWidth="1.8"
       />
     </svg>
-  );
+  )
 }
 
 function ScreenHeader({
@@ -475,9 +657,9 @@ function ScreenHeader({
   subtitle,
   onBack,
 }: {
-  title: string;
-  subtitle?: string;
-  onBack?: () => void;
+  title: string
+  subtitle?: string
+  onBack?: () => void
 }) {
   return (
     <header className="screen-header">
@@ -498,29 +680,34 @@ function ScreenHeader({
       </div>
       {subtitle ? <p className="screen-header__copy">{subtitle}</p> : null}
     </header>
-  );
+  )
 }
 
 export default function NutriOnboardingApp() {
-  const aliveRef = useRef(true);
-  const [isBooting, setIsBooting] = useState(true);
-  const [screenStack, setScreenStack] = useState<Screen[]>([{ name: "onboarding" }]);
-  const [user, setUser] = useState<UserResponse | null>(null);
-  const [planRecord, setPlanRecord] = useState<PlanResponse | null>(null);
-  const [recipesMap, setRecipesMap] = useState<Record<string, RecipeDetail>>({});
-  const [shoppingList, setShoppingList] = useState<ShoppingItem[] | null>(null);
-  const [shoppingLoading, setShoppingLoading] = useState(false);
-  const [shoppingCopied, setShoppingCopied] = useState(false);
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const [generationStatus, setGenerationStatus] = useState("PENDING");
-  const [generationError, setGenerationError] = useState("");
-  const [globalNotice, setGlobalNotice] = useState("");
-  const [errorNotice, setErrorNotice] = useState("");
-  const [isWorking, setIsWorking] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [selectedDayNumber, setSelectedDayNumber] = useState(1);
-  const [onboardingStep, setOnboardingStep] = useState(1);
-  const [onboardingForm, setOnboardingForm] = useState<OnboardingForm>(emptyOnboardingForm);
+  const aliveRef = useRef(true)
+  const [isBooting, setIsBooting] = useState(true)
+  const [screenStack, setScreenStack] = useState<Screen[]>([{ name: "onboarding" }])
+  const [user, setUser] = useState<UserResponse | null>(null)
+  const [planRecord, setPlanRecord] = useState<PlanResponse | null>(null)
+  const [recipesMap, setRecipesMap] = useState<Record<string, RecipeDetail>>({})
+  const [shoppingList, setShoppingList] = useState<ShoppingItem[] | null>(null)
+  const [shoppingLoading, setShoppingLoading] = useState(false)
+  const [shoppingCopied, setShoppingCopied] = useState(false)
+  const [_taskId, setTaskId] = useState<string | null>(null)
+  const [observability, setObservability] = useState<ObservabilityResponse | null>(null)
+  const [observabilityLoading, setObservabilityLoading] = useState(false)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [authMode, setAuthMode] = useState<AuthMode>("register")
+  const [generationStatus, setGenerationStatus] = useState("PENDING")
+  const [generationError, setGenerationError] = useState("")
+  const [globalNotice, setGlobalNotice] = useState("")
+  const [errorNotice, setErrorNotice] = useState("")
+  const [isWorking, setIsWorking] = useState(false)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [mealActionLoading, setMealActionLoading] = useState<"swap" | "cancel" | null>(null)
+  const [selectedDayNumber, setSelectedDayNumber] = useState(1)
+  const [onboardingStep, setOnboardingStep] = useState(1)
+  const [onboardingForm, setOnboardingForm] = useState<OnboardingForm>(emptyOnboardingForm)
   const [profileDraft, setProfileDraft] = useState<ProfileDraft>({
     age: "",
     weight_kg: "",
@@ -532,26 +719,29 @@ export default function NutriOnboardingApp() {
     preferences: "",
     disliked_ingredients: "",
     diseases: "",
-  });
+  })
 
-  const currentScreen = screenStack[screenStack.length - 1];
-  const planData = planRecord?.plan_data ?? null;
-  const todayIndex = getTodayIndex(planRecord);
-  const todayPlan = planData?.days.find((day) => day.day_number === todayIndex) ?? planData?.days[0] ?? null;
-  const todayCalories = todayPlan?.total_calories ?? 0;
-  const dailyTarget = planData?.daily_target_calories ?? user?.target_calories ?? 0;
-  const todayProgress = dailyTarget > 0 ? clamp(Math.round((todayCalories / dailyTarget) * 100), 0, 100) : 0;
+  const currentScreen = screenStack.at(-1) ?? { name: "onboarding" as const }
+  const onboardingSteps = authMode === "login" ? 1 : REGISTER_STEPS
+  const planData = planRecord?.plan_data ?? null
+  const todayIndex = getTodayIndex(planRecord)
+  const todayPlan =
+    planData?.days.find((day) => day.day_number === todayIndex) ?? planData?.days[0] ?? null
+  const todayCalories = todayPlan?.total_calories ?? 0
+  const dailyTarget = planData?.daily_target_calories ?? user?.target_calories ?? 0
+  const todayProgress =
+    dailyTarget > 0 ? clamp(Math.round((todayCalories / dailyTarget) * 100), 0, 100) : 0
 
   useEffect(() => {
-    aliveRef.current = true;
+    aliveRef.current = true
     return () => {
-      aliveRef.current = false;
-    };
-  }, []);
+      aliveRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!user) {
-      return;
+      return
     }
 
     setProfileDraft({
@@ -565,291 +755,505 @@ export default function NutriOnboardingApp() {
       preferences: joinList(user.preferences),
       disliked_ingredients: joinList(user.disliked_ingredients),
       diseases: joinList(user.diseases),
-    });
-  }, [user]);
+    })
+  }, [user])
 
   useEffect(() => {
-    setSelectedDayNumber(todayIndex);
-  }, [todayIndex, planRecord?.id]);
+    if (authMode === "login" && onboardingStep !== 1) {
+      setOnboardingStep(1)
+    }
+  }, [authMode, onboardingStep])
+
+  useEffect(() => {
+    setSelectedDayNumber(todayIndex)
+  }, [todayIndex, planRecord?.id])
 
   useEffect(() => {
     async function restoreSession() {
-      const stored = readStoredSession();
+      const stored = readStoredSession()
       if (!stored?.userId && !stored?.planId && !stored?.taskId) {
-        setIsBooting(false);
-        return;
+        setIsBooting(false)
+        return
       }
 
       try {
+        setAccessToken(stored.accessToken ?? null)
+
         if (stored.userId) {
-          const restoredUser = await fetchUser(stored.userId);
+          const restoredUser = await fetchUser(stored.userId)
           if (!aliveRef.current) {
-            return;
+            return
           }
-          setUser(restoredUser);
+          setUser(restoredUser)
         }
 
         if (stored.taskId && stored.userId) {
-          setTaskId(stored.taskId);
+          setTaskId(stored.taskId)
           startTransition(() => {
-            setScreenStack([{ name: "generating" }]);
-          });
-          setIsBooting(false);
-          void monitorTask(stored.taskId, stored.userId);
-          return;
+            setScreenStack([{ name: "generating" }])
+          })
+          setIsBooting(false)
+          void monitorTask(stored.taskId, stored.userId)
+          return
         }
 
         if (stored.planId && stored.userId) {
-          await hydratePlan(stored.userId, stored.planId);
+          await hydratePlan(stored.userId, stored.planId)
           if (!aliveRef.current) {
-            return;
+            return
           }
           startTransition(() => {
-            setScreenStack([{ name: "home" }]);
-          });
-          setIsBooting(false);
-          return;
+            setScreenStack([{ name: "home" }])
+          })
+          setIsBooting(false)
+          return
         }
       } catch {
-        clearAppState();
+        clearAppState()
       }
 
-      setIsBooting(false);
+      setIsBooting(false)
     }
 
-    void restoreSession();
-  }, []);
+    void restoreSession()
+  }, [])
 
   useEffect(() => {
     if (currentScreen.name !== "shopping" || !planRecord?.id || shoppingList || shoppingLoading) {
-      return;
+      return
     }
 
-    void loadShoppingList(planRecord.id);
-  }, [currentScreen.name, planRecord?.id, shoppingList, shoppingLoading]);
+    void loadShoppingList(planRecord.id)
+  }, [currentScreen.name, planRecord?.id, shoppingList, shoppingLoading])
+
+  useEffect(() => {
+    if (!planRecord?.id) {
+      setObservability(null)
+      setObservabilityLoading(false)
+      return
+    }
+
+    void loadObservability(planRecord.id)
+  }, [planRecord?.id])
 
   useEffect(() => {
     if (!shoppingCopied) {
-      return;
+      return
     }
 
     const timeout = window.setTimeout(() => {
-      setShoppingCopied(false);
-    }, 1600);
+      setShoppingCopied(false)
+    }, 1600)
 
     return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [shoppingCopied]);
+      window.clearTimeout(timeout)
+    }
+  }, [shoppingCopied])
 
   useEffect(() => {
     if (!globalNotice && !errorNotice) {
-      return;
+      return
     }
 
     const timeout = window.setTimeout(() => {
-      setGlobalNotice("");
-      setErrorNotice("");
-    }, 3600);
+      setGlobalNotice("")
+      setErrorNotice("")
+    }, 3600)
 
     return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [globalNotice, errorNotice]);
+      window.clearTimeout(timeout)
+    }
+  }, [globalNotice, errorNotice])
 
   function clearAppState() {
-    clearStoredSession();
-    setUser(null);
-    setPlanRecord(null);
-    setRecipesMap({});
-    setShoppingList(null);
-    setTaskId(null);
-    setGenerationStatus("PENDING");
-    setGenerationError("");
-    setGlobalNotice("");
-    setErrorNotice("");
-    setIsWorking(false);
-    setOnboardingStep(1);
-    setOnboardingForm(emptyOnboardingForm);
-    setSelectedDayNumber(1);
+    clearStoredSession()
+    setAccessToken(null)
+    setAuthMode("register")
+    setUser(null)
+    setPlanRecord(null)
+    setRecipesMap({})
+    setShoppingList(null)
+    setObservability(null)
+    setObservabilityLoading(false)
+    setTaskId(null)
+    setGenerationStatus("PENDING")
+    setGenerationError("")
+    setGlobalNotice("")
+    setErrorNotice("")
+    setIsWorking(false)
+    setMealActionLoading(null)
+    setOnboardingStep(1)
+    setOnboardingForm(emptyOnboardingForm)
+    setSelectedDayNumber(1)
     startTransition(() => {
-      setScreenStack([{ name: "onboarding" }]);
-    });
+      setScreenStack([{ name: "onboarding" }])
+    })
+  }
+
+  function signOut() {
+    clearAppState()
+    setGlobalNotice("Signed out.")
   }
 
   function pushScreen(screen: Screen) {
     startTransition(() => {
-      setScreenStack((current) => [...current, screen]);
-    });
+      setScreenStack((current) => [...current, screen])
+    })
   }
 
   function resetToScreen(screen: Screen) {
     startTransition(() => {
-      setScreenStack([screen]);
-    });
+      setScreenStack([screen])
+    })
   }
 
   function popScreen() {
     startTransition(() => {
-      setScreenStack((current) => (current.length > 1 ? current.slice(0, -1) : current));
-    });
+      setScreenStack((current) => (current.length > 1 ? current.slice(0, -1) : current))
+    })
+  }
+
+  function replaceCurrentScreen(screen: Screen) {
+    startTransition(() => {
+      setScreenStack((current) => [...current.slice(0, -1), screen])
+    })
+  }
+
+  function setSessionAccessToken(nextToken: string | null) {
+    setAccessToken(nextToken)
+    patchStoredSession({ accessToken: nextToken ?? undefined })
+  }
+
+  function buildHeaders(init?: HeadersInit, hasBody = false): Headers {
+    const headers = new Headers(init)
+    if (hasBody && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json")
+    }
+    if (accessToken && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${accessToken}`)
+    }
+    return headers
+  }
+
+  async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+    const response = await fetch(input, {
+      ...init,
+      headers: buildHeaders(init?.headers, Boolean(init?.body)),
+    })
+
+    if (response.status === 401 && accessToken) {
+      setSessionAccessToken(null)
+      setGlobalNotice("Session expired. Sign in again to access protected data.")
+    }
+
+    return response
   }
 
   async function fetchUser(userId: string): Promise<UserResponse> {
-    const response = await fetch(`${API_BASE}/api/users/${userId}`);
-    if (!response.ok) {
-      throw new Error(await readError(response));
+    if (accessToken) {
+      const sessionResponse = await apiFetch(`${API_BASE}/api/auth/me`)
+      if (sessionResponse.ok) {
+        return (await sessionResponse.json()) as UserResponse
+      }
+      if (sessionResponse.status !== 404 && sessionResponse.status !== 405) {
+        throw new Error(await readError(sessionResponse))
+      }
     }
-    return (await response.json()) as UserResponse;
+
+    const response = await apiFetch(`${API_BASE}/api/users/${userId}`)
+    if (!response.ok) {
+      throw new Error(await readError(response))
+    }
+    return (await response.json()) as UserResponse
   }
 
   async function fetchPlan(planId: string): Promise<PlanResponse> {
-    const response = await fetch(`${API_BASE}/api/plans/${planId}`);
+    const response = await apiFetch(`${API_BASE}/api/plans/${planId}`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    })
     if (!response.ok) {
-      throw new Error(await readError(response));
+      throw new Error(await readError(response))
     }
-    return (await response.json()) as PlanResponse;
+    return (await response.json()) as PlanResponse
   }
 
   async function loadRecipeDetails(nextPlanData: WeeklyPlan | null): Promise<void> {
     if (!nextPlanData) {
-      setRecipesMap({});
-      return;
+      setRecipesMap({})
+      return
     }
 
     const recipeIds = Array.from(
       new Set(nextPlanData.days.flatMap((day) => day.meals.map((meal) => meal.recipe_id))),
-    );
+    )
 
     if (recipeIds.length === 0) {
-      setRecipesMap({});
-      return;
+      setRecipesMap({})
+      return
     }
 
-    const response = await fetch(`${API_BASE}/api/recipes/batch`, {
+    const response = await apiFetch(`${API_BASE}/api/recipes/batch`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recipe_ids: recipeIds }),
-    });
+    })
 
     if (!response.ok) {
-      return;
+      return
     }
 
-    const payload = (await response.json()) as RecipeDetail[];
+    const payload = (await response.json()) as RecipeDetail[]
     if (!aliveRef.current) {
-      return;
+      return
     }
 
-    const nextMap: Record<string, RecipeDetail> = {};
+    const nextMap: Record<string, RecipeDetail> = {}
     for (const recipe of payload) {
-      nextMap[recipe.id] = recipe;
+      nextMap[recipe.id] = recipe
     }
-    setRecipesMap(nextMap);
+    setRecipesMap(nextMap)
   }
 
   async function hydratePlan(userId: string, planId: string): Promise<void> {
-    const [nextUser, nextPlan] = await Promise.all([fetchUser(userId), fetchPlan(planId)]);
+    const [nextUser, nextPlan] = await Promise.all([fetchUser(userId), fetchPlan(planId)])
     if (!aliveRef.current) {
-      return;
+      return
     }
 
-    setUser(nextUser);
-    setPlanRecord(nextPlan);
-    patchStoredSession({ userId, planId, taskId: undefined });
-    await loadRecipeDetails(nextPlan.plan_data);
+    setUser(nextUser)
+    setPlanRecord(nextPlan)
+    patchStoredSession({ userId, planId, taskId: undefined })
+    setShoppingList(null)
+    await loadRecipeDetails(nextPlan.plan_data)
+  }
+
+  async function refreshPlan(planId: string): Promise<PlanResponse> {
+    const nextPlan = await fetchPlan(planId)
+    if (!aliveRef.current) {
+      return nextPlan
+    }
+
+    setPlanRecord(nextPlan)
+    setShoppingList(null)
+    await loadRecipeDetails(nextPlan.plan_data)
+    return nextPlan
+  }
+
+  async function loadObservability(planId: string): Promise<void> {
+    setObservabilityLoading(true)
+    try {
+      const response = await apiFetch(`${API_BASE}/api/plans/${planId}/observability`)
+      if (!response.ok) {
+        throw new Error(await readError(response))
+      }
+
+      const payload = (await response.json()) as ObservabilityResponse
+      if (!aliveRef.current) {
+        return
+      }
+
+      setObservability({
+        ...payload,
+        steps: payload.steps.map(normalizeObservabilityStep),
+      })
+    } catch (error) {
+      if (!aliveRef.current) {
+        return
+      }
+      setObservability(null)
+      setErrorNotice(error instanceof Error ? error.message : "Could not load generation trace.")
+    } finally {
+      if (aliveRef.current) {
+        setObservabilityLoading(false)
+      }
+    }
+  }
+
+  async function fetchShoppingListItems(planId: string): Promise<ShoppingItem[]> {
+    const response = await apiFetch(`${API_BASE}/api/plans/${planId}/shopping-list`)
+    if (!response.ok) {
+      throw new Error(await readError(response))
+    }
+
+    const payload = (await response.json()) as { items: ShoppingItem[] }
+    return payload.items
   }
 
   async function loadShoppingList(planId: string): Promise<void> {
-    setShoppingLoading(true);
+    setShoppingLoading(true)
     try {
-      const response = await fetch(`${API_BASE}/api/plans/${planId}/shopping-list`);
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-
-      const payload = (await response.json()) as { items: ShoppingItem[] };
+      const items = await fetchShoppingListItems(planId)
       if (!aliveRef.current) {
-        return;
+        return
       }
 
-      setShoppingList(payload.items);
+      setShoppingList(items)
     } catch (error) {
       if (!aliveRef.current) {
-        return;
+        return
       }
-      setErrorNotice(error instanceof Error ? error.message : "Could not load shopping list.");
+      setErrorNotice(error instanceof Error ? error.message : "Could not load shopping list.")
     } finally {
       if (aliveRef.current) {
-        setShoppingLoading(false);
+        setShoppingLoading(false)
       }
     }
   }
 
   async function monitorTask(nextTaskId: string, userId: string): Promise<void> {
-    setTaskId(nextTaskId);
-    setGenerationError("");
-    setGenerationStatus("PENDING");
+    setTaskId(nextTaskId)
+    setGenerationError("")
+    setGenerationStatus("PENDING")
+    setObservability(null)
 
     for (let attempt = 0; attempt < 120; attempt += 1) {
       if (attempt > 0) {
-        const delay = attempt < 10 ? 1800 : attempt < 30 ? 3200 : 5200;
-        await sleep(delay);
+        const delay = attempt < 10 ? 1800 : attempt < 30 ? 3200 : 5200
+        await sleep(delay)
       }
 
-      const response = await fetch(`${API_BASE}/api/tasks/${nextTaskId}`);
+      const response = await apiFetch(`${API_BASE}${taskEndpoint(nextTaskId)}`)
       if (!response.ok) {
-        const message = await readError(response);
+        const message = await readError(response)
         if (!aliveRef.current) {
-          return;
+          return
         }
-        setGenerationError(message);
-        setErrorNotice(message);
-        return;
+        setGenerationError(message)
+        setErrorNotice(message)
+        return
       }
 
-      const task = (await response.json()) as {
-        status: string;
-        plan_id?: string;
-        error?: string;
-      };
+      const task = (await response.json()) as TaskResponse
 
       if (!aliveRef.current) {
-        return;
+        return
       }
 
-      setGenerationStatus(task.status);
-
-      if (task.status === "FAILED") {
-        const message = task.error || "Plan generation failed.";
-        setGenerationError(message);
-        setErrorNotice(message);
-        return;
+      const status = normalizeTaskStatus(task.status)
+      setGenerationStatus(status)
+      if (Array.isArray(task.steps) && task.steps.length) {
+        setObservability({
+          source: USE_DEMO_PIPELINE ? "live_task" : "derived_task",
+          summary: task.current_step
+            ? `Current step: ${task.current_step.replaceAll("_", " ")}`
+            : "Generation is in progress.",
+          steps: task.steps.map(normalizeObservabilityStep),
+          day_checks: [],
+          has_persisted_trace: false,
+        })
       }
 
-      if (task.status === "READY" && task.plan_id) {
-        await hydratePlan(userId, task.plan_id);
+      if (status === "FAILED") {
+        const message = task.error || "Plan generation failed."
+        setGenerationError(message)
+        setErrorNotice(message)
+        return
+      }
+
+      if (status === "READY" && task.plan_id) {
+        await hydratePlan(userId, task.plan_id)
         if (!aliveRef.current) {
-          return;
+          return
         }
 
-        patchStoredSession({ userId, planId: task.plan_id, taskId: undefined });
-        setTaskId(null);
-        setGlobalNotice("Your fresh week is ready.");
-        setShoppingList(null);
-        resetToScreen({ name: "home" });
-        return;
+        patchStoredSession({ userId, planId: task.plan_id, taskId: undefined })
+        setTaskId(null)
+        setGlobalNotice("Your fresh week is ready.")
+        setShoppingList(null)
+        resetToScreen({ name: "home" })
+        return
       }
     }
 
-    setGenerationError("Generation took too long. Please try again.");
+    setGenerationError("Generation took too long. Please try again.")
+  }
+
+  async function loginExistingUser(event: FormEvent) {
+    event.preventDefault()
+    setErrorNotice("")
+    setGlobalNotice("")
+    setIsWorking(true)
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: onboardingForm.email.trim(),
+          password: onboardingForm.password,
+        }),
+      })
+
+      if (response.status === 404 || response.status === 405) {
+        setAuthMode("register")
+        throw new Error(
+          "This backend does not expose sign-in yet. Switched back to account creation.",
+        )
+      }
+
+      if (!response.ok) {
+        throw new Error(await readError(response))
+      }
+
+      const auth = (await response.json()) as AuthResponse
+      const nextToken = extractBearerToken(auth)
+      const nextUser = auth.user ?? null
+      const nextUserId = nextUser?.id ?? auth.user_id ?? null
+
+      if (!nextToken || !nextUserId) {
+        throw new Error("Login succeeded but backend did not return a usable session payload.")
+      }
+
+      setSessionAccessToken(nextToken)
+
+      if (nextUser) {
+        setUser(nextUser)
+      } else {
+        const restoredUser = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${nextToken}`,
+          },
+        })
+
+        if (!restoredUser.ok) {
+          throw new Error(await readError(restoredUser))
+        }
+
+        if (!aliveRef.current) {
+          return
+        }
+
+        setUser((await restoredUser.json()) as UserResponse)
+      }
+
+      if (!aliveRef.current) {
+        return
+      }
+
+      patchStoredSession({
+        userId: nextUserId,
+        planId: undefined,
+        taskId: undefined,
+        accessToken: nextToken,
+      })
+      setGlobalNotice("Signed in. Generate a week or open your saved profile.")
+      resetToScreen({ name: "home" })
+    } catch (error) {
+      if (!aliveRef.current) {
+        return
+      }
+      setErrorNotice(error instanceof Error ? error.message : "Could not sign in.")
+    } finally {
+      if (aliveRef.current) {
+        setIsWorking(false)
+      }
+    }
   }
 
   async function createUserAndGenerate(event: FormEvent) {
-    event.preventDefault();
-    setErrorNotice("");
-    setGlobalNotice("");
-    setIsWorking(true);
+    event.preventDefault()
+    setErrorNotice("")
+    setGlobalNotice("")
+    setIsWorking(true)
 
     try {
       const createUserBody = {
@@ -865,220 +1269,538 @@ export default function NutriOnboardingApp() {
         preferences: splitList(onboardingForm.preferences),
         disliked_ingredients: splitList(onboardingForm.disliked_ingredients),
         diseases: splitList(onboardingForm.diseases),
-      };
+      }
 
-      const createResponse = await fetch(`${API_BASE}/api/users`, {
+      let createdUser: UserResponse
+      let nextToken: string | null = null
+
+      const registerResponse = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(createUserBody),
-      });
+      })
 
-      if (!createResponse.ok) {
-        throw new Error(await readError(createResponse));
+      if (registerResponse.ok) {
+        const auth = (await registerResponse.json()) as AuthResponse
+        nextToken = extractBearerToken(auth)
+        if (auth.user) {
+          createdUser = auth.user
+        } else if (auth.user_id && nextToken) {
+          const protectedUser = await fetch(`${API_BASE}/api/users/${auth.user_id}`, {
+            headers: {
+              Authorization: `Bearer ${nextToken}`,
+            },
+          })
+
+          if (!protectedUser.ok) {
+            throw new Error(await readError(protectedUser))
+          }
+
+          createdUser = (await protectedUser.json()) as UserResponse
+        } else {
+          throw new Error("Register endpoint did not return a usable user session.")
+        }
+      } else if (registerResponse.status === 404 || registerResponse.status === 405) {
+        const createResponse = await fetch(`${API_BASE}/api/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(createUserBody),
+        })
+
+        if (!createResponse.ok) {
+          throw new Error(await readError(createResponse))
+        }
+
+        createdUser = (await createResponse.json()) as UserResponse
+      } else {
+        throw new Error(await readError(registerResponse))
       }
 
-      const createdUser = (await createResponse.json()) as UserResponse;
       if (!aliveRef.current) {
-        return;
+        return
       }
 
-      setUser(createdUser);
-      patchStoredSession({ userId: createdUser.id, planId: undefined, taskId: undefined });
-      resetToScreen({ name: "generating" });
+      if (nextToken) {
+        setSessionAccessToken(nextToken)
+      }
+      setUser(createdUser)
+      patchStoredSession({
+        userId: createdUser.id,
+        planId: undefined,
+        taskId: undefined,
+        accessToken: nextToken ?? undefined,
+      })
+      resetToScreen({ name: "generating" })
 
-      const generateResponse = await fetch(`${API_BASE}/api/generate-plan`, {
+      const generateResponse = await apiFetch(`${API_BASE}${generationEndpoint()}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: createdUser.id, days: PLAN_DAYS }),
-      });
+      })
 
       if (!generateResponse.ok) {
-        throw new Error(await readError(generateResponse));
+        throw new Error(await readError(generateResponse))
       }
 
-      const generation = (await generateResponse.json()) as { task_id: string };
-      patchStoredSession({ userId: createdUser.id, taskId: generation.task_id, planId: undefined });
-      await monitorTask(generation.task_id, createdUser.id);
+      const generation = (await generateResponse.json()) as { task_id: string }
+      patchStoredSession({
+        userId: createdUser.id,
+        taskId: generation.task_id,
+        planId: undefined,
+        accessToken: nextToken ?? accessToken ?? undefined,
+      })
+      await monitorTask(generation.task_id, createdUser.id)
     } catch (error) {
       if (!aliveRef.current) {
-        return;
+        return
       }
-      setErrorNotice(error instanceof Error ? error.message : "Could not start onboarding.");
-      resetToScreen({ name: "onboarding" });
+      setErrorNotice(error instanceof Error ? error.message : "Could not start onboarding.")
+      resetToScreen({ name: "onboarding" })
     } finally {
       if (aliveRef.current) {
-        setIsWorking(false);
+        setIsWorking(false)
       }
     }
   }
 
   async function regenerateWeek() {
     if (!user) {
-      return;
+      return
     }
 
-    setErrorNotice("");
-    setGlobalNotice("");
-    setGenerationStatus("PENDING");
-    setGenerationError("");
-    resetToScreen({ name: "generating" });
+    setErrorNotice("")
+    setGlobalNotice("")
+    setGenerationStatus("PENDING")
+    setGenerationError("")
+    resetToScreen({ name: "generating" })
 
     try {
-      const response = await fetch(`${API_BASE}/api/generate-plan`, {
+      const response = await apiFetch(`${API_BASE}${generationEndpoint()}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, days: PLAN_DAYS }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(await readError(response));
+        throw new Error(await readError(response))
       }
 
-      const generation = (await response.json()) as { task_id: string };
-      patchStoredSession({ userId: user.id, taskId: generation.task_id, planId: undefined });
-      await monitorTask(generation.task_id, user.id);
+      const generation = (await response.json()) as { task_id: string }
+      patchStoredSession({
+        userId: user.id,
+        taskId: generation.task_id,
+        planId: undefined,
+        accessToken: accessToken ?? undefined,
+      })
+      await monitorTask(generation.task_id, user.id)
     } catch (error) {
       if (!aliveRef.current) {
-        return;
+        return
       }
-      setGenerationError(error instanceof Error ? error.message : "Could not refresh your week.");
+      setGenerationError(error instanceof Error ? error.message : "Could not refresh your week.")
     }
   }
 
   async function saveProfile() {
     if (!user) {
-      return;
+      return
     }
 
-    setIsSavingProfile(true);
-    setErrorNotice("");
-    setGlobalNotice("");
+    setIsSavingProfile(true)
+    setErrorNotice("")
+    setGlobalNotice("")
 
     try {
-      const response = await fetch(`${API_BASE}/api/users/${user.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          age: Number(profileDraft.age),
-          weight_kg: Number(profileDraft.weight_kg),
-          height_cm: Number(profileDraft.height_cm),
-          gender: profileDraft.gender,
-          activity_level: profileDraft.activity_level,
-          goal: profileDraft.goal,
-          allergies: splitList(profileDraft.allergies),
-          preferences: splitList(profileDraft.preferences),
-          disliked_ingredients: splitList(profileDraft.disliked_ingredients),
-          diseases: splitList(profileDraft.diseases),
-        }),
-      });
+      const profilePayload = {
+        age: Number(profileDraft.age),
+        weight_kg: Number(profileDraft.weight_kg),
+        height_cm: Number(profileDraft.height_cm),
+        gender: profileDraft.gender,
+        activity_level: profileDraft.activity_level,
+        goal: profileDraft.goal,
+        allergies: splitList(profileDraft.allergies),
+        preferences: splitList(profileDraft.preferences),
+        disliked_ingredients: splitList(profileDraft.disliked_ingredients),
+        diseases: splitList(profileDraft.diseases),
+      }
+
+      let response: Response
+      if (accessToken) {
+        response = await apiFetch(`${API_BASE}/api/auth/me`, {
+          method: "PUT",
+          body: JSON.stringify(profilePayload),
+        })
+        if (response.status === 404 || response.status === 405) {
+          response = await apiFetch(`${API_BASE}/api/users/${user.id}`, {
+            method: "PUT",
+            body: JSON.stringify(profilePayload),
+          })
+        }
+      } else {
+        response = await apiFetch(`${API_BASE}/api/users/${user.id}`, {
+          method: "PUT",
+          body: JSON.stringify(profilePayload),
+        })
+      }
 
       if (!response.ok) {
-        throw new Error(await readError(response));
+        throw new Error(await readError(response))
       }
 
-      const updatedUser = (await response.json()) as UserResponse;
+      const updatedUser = (await response.json()) as UserResponse
       if (!aliveRef.current) {
-        return;
+        return
       }
 
-      setUser(updatedUser);
-      setGlobalNotice("Preferences saved. Generate a fresh week to apply them.");
+      setUser(updatedUser)
+      setGlobalNotice("Preferences saved. Generate a fresh week to apply them.")
     } catch (error) {
       if (!aliveRef.current) {
-        return;
+        return
       }
-      setErrorNotice(error instanceof Error ? error.message : "Could not save profile.");
+      setErrorNotice(error instanceof Error ? error.message : "Could not save profile.")
     } finally {
       if (aliveRef.current) {
-        setIsSavingProfile(false);
+        setIsSavingProfile(false)
       }
     }
   }
 
-  async function copyShoppingItems() {
-    if (!shoppingList?.length || !navigator.clipboard) {
-      return;
+  async function copyText(text: string, successMessage: string): Promise<boolean> {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      setErrorNotice("Clipboard is unavailable in this browser.")
+      return false
     }
 
-    const text = shoppingList
-      .map((item) => `${item.name} — ${item.amount} ${item.unit}`)
-      .join("\n");
+    await navigator.clipboard.writeText(text)
+    setGlobalNotice(successMessage)
+    return true
+  }
 
-    await navigator.clipboard.writeText(text);
-    setShoppingCopied(true);
+  function formatShoppingItems(items: ShoppingItem[]): string {
+    return items.map((item) => `${item.name} - ${item.amount} ${item.unit}`).join("\n")
+  }
+
+  async function getShoppingItemsForAction(): Promise<ShoppingItem[]> {
+    if (shoppingList?.length) {
+      return shoppingList
+    }
+    if (!planRecord?.id) {
+      throw new Error("No active plan is available.")
+    }
+
+    setShoppingLoading(true)
+    try {
+      const items = await fetchShoppingListItems(planRecord.id)
+      if (aliveRef.current) {
+        setShoppingList(items)
+      }
+      return items
+    } finally {
+      if (aliveRef.current) {
+        setShoppingLoading(false)
+      }
+    }
+  }
+
+  function buildPlanSummaryText(): string {
+    if (!planData?.days.length) {
+      return "NutriAgent plan is not ready yet."
+    }
+
+    const lines = [
+      "NutriAgent meal plan",
+      `Daily target: ${Math.round(dailyTarget)} kcal`,
+      `Goal: ${formatGoal(planData.user_profile?.goal || user?.goal)}`,
+      "",
+    ]
+
+    for (const day of planData.days) {
+      lines.push(`Day ${day.day_number} - ${formatPlanDayLabel(planRecord, day.day_number)}`)
+      for (const meal of day.meals) {
+        lines.push(
+          `${meal.time || "Flexible"} ${formatMealType(meal.type)}: ${meal.title} (${Math.round(
+            meal.calories,
+          )} kcal)`,
+        )
+      }
+      lines.push("")
+    }
+
+    return lines.join("\n").trim()
+  }
+
+  async function copyPlanSummary() {
+    try {
+      await copyText(buildPlanSummaryText(), "Plan summary copied for Notes, chat, or files.")
+    } catch (error) {
+      setErrorNotice(error instanceof Error ? error.message : "Could not copy plan summary.")
+    }
+  }
+
+  async function sharePlanSummary() {
+    const text = buildPlanSummaryText()
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "NutriAgent meal plan",
+          text,
+        })
+        setGlobalNotice("Shared through the system share sheet.")
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return
+        }
+        setErrorNotice(error instanceof Error ? error.message : "Could not open share sheet.")
+        return
+      }
+    }
+
+    await copyText(text, "Share sheet is unavailable. Plan summary copied instead.")
+  }
+
+  async function copyShoppingItems() {
+    try {
+      const items = await getShoppingItemsForAction()
+      if (!items.length) {
+        setErrorNotice("Shopping list is empty for this plan.")
+        return
+      }
+
+      await copyText(formatShoppingItems(items), "Shopping list copied.")
+      setShoppingCopied(true)
+    } catch (error) {
+      setErrorNotice(error instanceof Error ? error.message : "Could not copy shopping list.")
+    }
+  }
+
+  async function downloadProtectedFile(path: string, filename: string): Promise<void> {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const response = await apiFetch(`${API_BASE}${path}`)
+    if (!response.ok) {
+      throw new Error(await readError(response))
+    }
+
+    const blob = await response.blob()
+    const objectUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = objectUrl
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(objectUrl)
   }
 
   function openCalendarExport() {
     if (!planRecord?.id || typeof window === "undefined") {
-      return;
+      return
     }
+    void (async () => {
+      try {
+        await downloadProtectedFile(
+          `/api/plans/${planRecord.id}/calendar.ics`,
+          `nutriagent-plan-${planRecord.id}.ics`,
+        )
+        setGlobalNotice(
+          "Calendar file downloaded. Open it with Apple Calendar, Google Calendar, or Outlook.",
+        )
+      } catch (error) {
+        if (!aliveRef.current) {
+          return
+        }
+        setErrorNotice(error instanceof Error ? error.message : "Could not export calendar.")
+      }
+    })()
+  }
 
-    const link = document.createElement("a");
-    link.href = `${API_BASE}/api/plans/${planRecord.id}/calendar.ics`;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.click();
+  function openShoppingListPdf() {
+    if (!planRecord?.id || typeof window === "undefined") {
+      return
+    }
+    void (async () => {
+      try {
+        await downloadProtectedFile(
+          `/api/plans/${planRecord.id}/shopping-list.pdf`,
+          `nutriagent-shopping-list-${planRecord.id}.pdf`,
+        )
+        setGlobalNotice("Shopping PDF downloaded.")
+      } catch (error) {
+        if (!aliveRef.current) {
+          return
+        }
+        setErrorNotice(error instanceof Error ? error.message : "Could not export shopping list.")
+      }
+    })()
   }
 
   function updateOnboarding<K extends keyof OnboardingForm>(key: K, value: OnboardingForm[K]) {
-    setOnboardingForm((current) => ({ ...current, [key]: value }));
+    setOnboardingForm((current) => ({ ...current, [key]: value }))
   }
 
   function updateProfileDraft<K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) {
-    setProfileDraft((current) => ({ ...current, [key]: value }));
+    setProfileDraft((current) => ({ ...current, [key]: value }))
   }
 
   function validateStep(step: number): string | null {
     if (step === 1) {
       if (!onboardingForm.email.trim() || !onboardingForm.password.trim()) {
-        return "Add an email and password to create your plan.";
+        return authMode === "login"
+          ? "Add your email and password to sign in."
+          : "Add an email and password to create your plan."
       }
       if (onboardingForm.password.trim().length < 6) {
-        return "Password should be at least 6 characters.";
+        return "Password should be at least 6 characters."
       }
+    }
+
+    if (authMode === "login") {
+      return null
     }
 
     if (step === 2) {
       if (!onboardingForm.age || !onboardingForm.weight_kg || !onboardingForm.height_cm) {
-        return "Fill in your body metrics before continuing.";
+        return "Fill in your body metrics before continuing."
       }
     }
 
-    return null;
+    return null
   }
 
   function goToNextStep() {
-    const validationError = validateStep(onboardingStep);
+    const validationError = validateStep(onboardingStep)
     if (validationError) {
-      setErrorNotice(validationError);
-      return;
+      setErrorNotice(validationError)
+      return
     }
 
-    setErrorNotice("");
-    setOnboardingStep((current) => clamp(current + 1, 1, ONBOARDING_STEPS));
+    setErrorNotice("")
+    setOnboardingStep((current) => clamp(current + 1, 1, onboardingSteps))
   }
 
   function goToPreviousStep() {
-    setErrorNotice("");
-    setOnboardingStep((current) => clamp(current - 1, 1, ONBOARDING_STEPS));
+    setErrorNotice("")
+    setOnboardingStep((current) => clamp(current - 1, 1, onboardingSteps))
   }
 
   function openRecipe(recipeId: string) {
-    pushScreen({ name: "recipe", recipeId });
+    pushScreen({ name: "recipe", recipeId })
   }
 
   function getRecipeById(recipeId: string): RecipeDetail | null {
-    return recipesMap[recipeId] ?? null;
+    return recipesMap[recipeId] ?? null
   }
 
   function getMealByRecipeId(recipeId: string): MealItem | null {
+    return getMealContextByRecipeId(recipeId)?.meal ?? null
+  }
+
+  function getMealContextByRecipeId(recipeId: string): MealContext | null {
     for (const day of planData?.days ?? []) {
-      const found = day.meals.find((meal) => meal.recipe_id === recipeId);
+      const found = day.meals.find((meal) => meal.recipe_id === recipeId)
       if (found) {
-        return found;
+        return { day, meal: found }
       }
     }
-    return null;
+    return null
+  }
+
+  async function swapCurrentMeal(recipeId: string): Promise<void> {
+    if (!planRecord?.id) {
+      return
+    }
+
+    const context = getMealContextByRecipeId(recipeId)
+    if (!context) {
+      return
+    }
+
+    setMealActionLoading("swap")
+    setErrorNotice("")
+    setGlobalNotice("")
+
+    try {
+      const response = await apiFetch(`${API_BASE}/api/plans/${planRecord.id}/swap-meal`, {
+        method: "POST",
+        body: JSON.stringify({
+          day_number: context.day.day_number,
+          meal_type: context.meal.type,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await readError(response))
+      }
+
+      const payload = (await response.json()) as { day: DayPlan }
+      const nextMeal = payload.day.meals.find((meal) => meal.type === context.meal.type)
+      await refreshPlan(planRecord.id)
+
+      if (!aliveRef.current) {
+        return
+      }
+
+      if (nextMeal) {
+        replaceCurrentScreen({ name: "recipe", recipeId: nextMeal.recipe_id })
+      }
+      setGlobalNotice("Meal swapped and daily totals recalculated.")
+    } catch (error) {
+      if (!aliveRef.current) {
+        return
+      }
+      setErrorNotice(error instanceof Error ? error.message : "Could not swap this meal.")
+    } finally {
+      if (aliveRef.current) {
+        setMealActionLoading(null)
+      }
+    }
+  }
+
+  async function cancelCurrentMeal(recipeId: string): Promise<void> {
+    if (!planRecord?.id) {
+      return
+    }
+
+    const context = getMealContextByRecipeId(recipeId)
+    if (!context) {
+      return
+    }
+
+    setMealActionLoading("cancel")
+    setErrorNotice("")
+    setGlobalNotice("")
+
+    try {
+      const response = await apiFetch(`${API_BASE}/api/plans/${planRecord.id}/cancel-meal`, {
+        method: "POST",
+        body: JSON.stringify({
+          day_number: context.day.day_number,
+          meal_type: context.meal.type,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await readError(response))
+      }
+
+      await refreshPlan(planRecord.id)
+
+      if (!aliveRef.current) {
+        return
+      }
+
+      setGlobalNotice("Meal removed and daily totals recalculated.")
+      popScreen()
+    } catch (error) {
+      if (!aliveRef.current) {
+        return
+      }
+      setErrorNotice(error instanceof Error ? error.message : "Could not remove this meal.")
+    } finally {
+      if (aliveRef.current) {
+        setMealActionLoading(null)
+      }
+    }
   }
 
   function renderBoot() {
@@ -1098,7 +1820,7 @@ export default function NutriOnboardingApp() {
           Restoring your current plan, preferences, and today&apos;s quick actions.
         </p>
       </section>
-    );
+    )
   }
 
   function renderOnboarding() {
@@ -1115,26 +1837,49 @@ export default function NutriOnboardingApp() {
             </div>
           </div>
           <p className="welcome-copy">
-            A structured onboarding for goals, preferences, and restrictions. Then NutriAgent
-            turns it into a full 7-day plan.
+            A structured onboarding for goals, preferences, and restrictions. Then NutriAgent turns
+            it into a full {PLAN_DAYS}-day plan.
           </p>
-          <div className="step-track" aria-label={`Step ${onboardingStep} of ${ONBOARDING_STEPS}`}>
-            {Array.from({ length: ONBOARDING_STEPS }).map((_, index) => (
+          <div className="mode-switch" role="tablist" aria-label="Account flow">
+            <button
+              type="button"
+              className={`mode-chip ${authMode === "register" ? "is-active" : ""}`}
+              onClick={() => setAuthMode("register")}
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              className={`mode-chip ${authMode === "login" ? "is-active" : ""}`}
+              onClick={() => setAuthMode("login")}
+            >
+              Sign in
+            </button>
+          </div>
+          <div className="step-track">
+            {Array.from({ length: onboardingSteps }, (_, index) => index + 1).map((stepNumber) => (
               <span
-                key={index}
-                className={`step-dot ${index + 1 <= onboardingStep ? "is-active" : ""}`}
+                key={stepNumber}
+                className={`step-dot ${stepNumber <= onboardingStep ? "is-active" : ""}`}
               />
             ))}
           </div>
         </div>
 
-        <form onSubmit={createUserAndGenerate} className="form-shell">
+        <form
+          onSubmit={authMode === "login" ? loginExistingUser : createUserAndGenerate}
+          className="form-shell"
+        >
           {onboardingStep === 1 ? (
             <>
               <div className="section-copy">
                 <span className="section-copy__eyebrow">Account</span>
-                <h2>Start with the basics</h2>
-                <p>We save your active plan locally so you return straight to Today.</p>
+                <h2>{authMode === "login" ? "Use your saved profile" : "Start with the basics"}</h2>
+                <p>
+                  {authMode === "login"
+                    ? "Sign in with the account that already has your nutrition profile."
+                    : "We save your active plan locally so you return straight to Today."}
+                </p>
               </div>
               <label className="field">
                 <span>Email</span>
@@ -1157,7 +1902,7 @@ export default function NutriOnboardingApp() {
             </>
           ) : null}
 
-          {onboardingStep === 2 ? (
+          {authMode === "register" && onboardingStep === 2 ? (
             <>
               <div className="section-copy">
                 <span className="section-copy__eyebrow">Body metrics</span>
@@ -1211,7 +1956,7 @@ export default function NutriOnboardingApp() {
             </>
           ) : null}
 
-          {onboardingStep === 3 ? (
+          {authMode === "register" && onboardingStep === 3 ? (
             <>
               <div className="section-copy">
                 <span className="section-copy__eyebrow">Goal and rhythm</span>
@@ -1255,7 +2000,7 @@ export default function NutriOnboardingApp() {
             </>
           ) : null}
 
-          {onboardingStep === 4 ? (
+          {authMode === "register" && onboardingStep === 4 ? (
             <>
               <div className="section-copy">
                 <span className="section-copy__eyebrow">Restrictions and review</span>
@@ -1274,9 +2019,7 @@ export default function NutriOnboardingApp() {
                 <span>Disliked ingredients</span>
                 <textarea
                   value={onboardingForm.disliked_ingredients}
-                  onChange={(event) =>
-                    updateOnboarding("disliked_ingredients", event.target.value)
-                  }
+                  onChange={(event) => updateOnboarding("disliked_ingredients", event.target.value)}
                   placeholder="broccoli, liver, onion"
                 />
               </label>
@@ -1304,7 +2047,7 @@ export default function NutriOnboardingApp() {
           ) : null}
 
           <div className="sticky-actions">
-            {onboardingStep > 1 ? (
+            {authMode === "register" && onboardingStep > 1 ? (
               <button type="button" className="button button--ghost" onClick={goToPreviousStep}>
                 Back
               </button>
@@ -1314,19 +2057,101 @@ export default function NutriOnboardingApp() {
               </button>
             )}
 
-            {onboardingStep < ONBOARDING_STEPS ? (
+            {authMode === "register" && onboardingStep < onboardingSteps ? (
               <button type="button" className="button button--primary" onClick={goToNextStep}>
                 Continue
               </button>
             ) : (
               <button type="submit" className="button button--primary" disabled={isWorking}>
-                {isWorking ? "Starting..." : "Generate my week"}
+                {isWorking ? "Starting..." : authMode === "login" ? "Sign in" : "Generate my week"}
               </button>
             )}
           </div>
         </form>
       </section>
-    );
+    )
+  }
+
+  function renderResultDisclaimer() {
+    return (
+      <section className="disclaimer-banner" aria-label="Medical disclaimer">
+        <strong>Important</strong>
+        <p>{RESULT_DISCLAIMER}</p>
+      </section>
+    )
+  }
+
+  function renderObservabilityPanel(mode: "generation" | "result") {
+    if (!observability && !observabilityLoading) {
+      return null
+    }
+
+    const title = mode === "generation" ? "Generation trace" : "Validation and reflection log"
+    const eyebrow = mode === "generation" ? "Live status" : "Safe diagnostics"
+
+    return (
+      <section className="section-block observability-panel">
+        <div className="section-heading">
+          <div>
+            <span className="section-heading__eyebrow">{eyebrow}</span>
+            <h2>{title}</h2>
+          </div>
+        </div>
+
+        {observabilityLoading ? (
+          <div className="loading-card">
+            <TimeIcon className="icon icon--brand" />
+            <span>Loading generation diagnostics…</span>
+          </div>
+        ) : null}
+
+        {observability ? (
+          <>
+            <div className="observability-summary">
+              <strong>{observability.summary}</strong>
+              <span>
+                Safe view only. Raw prompts, tokens, and provider payloads are intentionally hidden.
+              </span>
+            </div>
+
+            <div className="observability-steps">
+              {observability.steps.map((step) => (
+                <div key={`${step.key}-${step.status}`} className="observability-step">
+                  <div className={`observability-step__status is-${step.status}`}>
+                    {step.status.replaceAll("_", " ")}
+                  </div>
+                  <div>
+                    <strong>{step.key.replaceAll("_", " ")}</strong>
+                    <p>{step.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {mode === "result" && observability.day_checks.length ? (
+              <div className="observability-days">
+                {observability.day_checks.map((dayCheck) => (
+                  <div key={dayCheck.day_number} className="observability-day">
+                    <strong>Day {dayCheck.day_number}</strong>
+                    <span>
+                      {Math.round(dayCheck.total_calories)} / {Math.round(dayCheck.target_calories)}{" "}
+                      kcal
+                    </span>
+                    <span>
+                      Deviation {Math.round(dayCheck.deviation_kcal)} kcal ({dayCheck.deviation_pct}
+                      %)
+                    </span>
+                    <span className={dayCheck.within_target ? "is-good" : "is-warning"}>
+                      {dayCheck.within_target ? "Within target band" : "Needs review"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </section>
+    )
   }
 
   function renderGenerating() {
@@ -1337,13 +2162,16 @@ export default function NutriOnboardingApp() {
           ? generationError || "Generation failed."
           : generationStatus === "GENERATING"
             ? "Matching recipes, balancing calories, building the final week."
-            : "Creating your nutrition profile and queueing the plan.";
+            : "Creating your nutrition profile and queueing the plan."
 
     const stages = [
       { label: "Profile parsed", active: generationStatus !== "PENDING" || !!user },
-      { label: "Recipe pool matched", active: generationStatus === "GENERATING" || generationStatus === "READY" },
+      {
+        label: "Recipe pool matched",
+        active: generationStatus === "GENERATING" || generationStatus === "READY",
+      },
       { label: "Week balanced", active: generationStatus === "READY" },
-    ];
+    ]
 
     return (
       <section className="screen-card screen-card--generation">
@@ -1364,7 +2192,11 @@ export default function NutriOnboardingApp() {
           {stages.map((stage) => (
             <div key={stage.label} className={`progress-step ${stage.active ? "is-active" : ""}`}>
               <span className="progress-step__icon">
-                {stage.active ? <CheckIcon className="icon" /> : <span className="progress-step__dot" />}
+                {stage.active ? (
+                  <CheckIcon className="icon" />
+                ) : (
+                  <span className="progress-step__dot" />
+                )}
               </span>
               <div>
                 <strong>{stage.label}</strong>
@@ -1373,6 +2205,8 @@ export default function NutriOnboardingApp() {
             </div>
           ))}
         </div>
+
+        {renderObservabilityPanel("generation")}
 
         {generationError ? (
           <div className="alert alert--error">
@@ -1384,7 +2218,7 @@ export default function NutriOnboardingApp() {
           </div>
         ) : null}
       </section>
-    );
+    )
   }
 
   function renderEmptyHome() {
@@ -1399,13 +2233,20 @@ export default function NutriOnboardingApp() {
             <SparkIcon className="icon icon--large" />
           </div>
           <h3>No active week yet</h3>
-          <p>Generate your first 7-day plan to unlock Today, Weekly Plan, recipes, and shopping.</p>
-          <button type="button" className="button button--primary" onClick={user ? regenerateWeek : clearAppState}>
+          <p>
+            Generate your first {PLAN_DAYS}-day plan to unlock Today, Weekly Plan, recipes, and
+            shopping.
+          </p>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={user ? regenerateWeek : clearAppState}
+          >
             {user ? "Generate my first week" : "Start onboarding"}
           </button>
         </div>
       </section>
-    );
+    )
   }
 
   function renderQuickActions(actions: QuickAction[]) {
@@ -1422,7 +2263,7 @@ export default function NutriOnboardingApp() {
           </button>
         ))}
       </div>
-    );
+    )
   }
 
   function renderMealCard(meal: MealItem, mode: "home" | "weekly") {
@@ -1437,25 +2278,178 @@ export default function NutriOnboardingApp() {
           <div className="meal-visual__content">
             <span className="pill pill--soft">{formatMealType(meal.type)}</span>
             <strong>{meal.title}</strong>
-            <p>{meal.time || "Flexible time"} · {Math.round(meal.calories)} kcal</p>
+            <p>
+              {meal.time || "Flexible time"} · {Math.round(meal.calories)} kcal
+            </p>
           </div>
         </div>
         <div className="meal-card__body">
           <div>
             <h3>{meal.title}</h3>
-            <p>{meal.time || "Planned meal"} · P {Math.round(meal.protein)} · C {Math.round(meal.carbs)}</p>
+            <p>
+              {meal.time || "Planned meal"} · P {Math.round(meal.protein)} · C{" "}
+              {Math.round(meal.carbs)}
+            </p>
           </div>
           <span className="meal-card__cta">
             <ChevronRightIcon className="icon" />
           </span>
         </div>
       </button>
-    );
+    )
+  }
+
+  function renderWeeklyCaloriesChart(activeDayNumber: number) {
+    if (!planData?.days.length) {
+      return null
+    }
+
+    const maxCalories = Math.max(
+      ...planData.days.map((day) => day.total_calories),
+      dailyTarget || 0,
+      1,
+    )
+    const targetY = 132 - (dailyTarget / maxCalories) * 108
+
+    return (
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <span className="section-heading__eyebrow">Energy profile</span>
+            <h2>Calories across the week</h2>
+          </div>
+          <div className="chart-target">
+            <strong>{Math.round(dailyTarget)}</strong>
+            <span>daily target</span>
+          </div>
+        </div>
+        <div className="chart-card chart-card--weekly">
+          <svg
+            className="weekly-chart"
+            viewBox={`0 0 ${planData.days.length * 54} 176`}
+            role="img"
+            aria-label="Weekly calories by day"
+          >
+            {planData.days.map((day, index) => {
+              const barHeight = Math.max((day.total_calories / maxCalories) * 108, 8)
+              const x = index * 54 + 11
+              const y = 132 - barHeight
+              const isActive = day.day_number === activeDayNumber
+
+              return (
+                <g key={day.day_number}>
+                  <line x1={x + 16} x2={x + 16} y1={20} y2={132} className="weekly-chart__guide" />
+                  <rect
+                    x={x}
+                    y={y}
+                    width={32}
+                    height={barHeight}
+                    rx={12}
+                    className={isActive ? "weekly-chart__bar is-active" : "weekly-chart__bar"}
+                  />
+                  {dailyTarget > 0 ? (
+                    <line
+                      x1={x - 3}
+                      x2={x + 35}
+                      y1={targetY}
+                      y2={targetY}
+                      className="weekly-chart__target"
+                    />
+                  ) : null}
+                  <text x={x + 16} y={152} textAnchor="middle" className="weekly-chart__label">
+                    {day.day_number}
+                  </text>
+                  <text x={x + 16} y={y - 8} textAnchor="middle" className="weekly-chart__value">
+                    {Math.round(day.total_calories)}
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
+        </div>
+      </section>
+    )
+  }
+
+  function renderMacroBreakdownChart(day: DayPlan, title: string, eyebrow: string) {
+    const macroEntries = [
+      { ...MACRO_SERIES[0], value: day.total_protein },
+      { ...MACRO_SERIES[1], value: day.total_fat },
+      { ...MACRO_SERIES[2], value: day.total_carbs },
+    ]
+    const total = macroEntries.reduce((sum, item) => sum + item.value, 0)
+    const circumference = 2 * Math.PI * 44
+    let offset = 0
+
+    return (
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <span className="section-heading__eyebrow">{eyebrow}</span>
+            <h2>{title}</h2>
+          </div>
+          <div className="chart-target">
+            <strong>{Math.round(total)}</strong>
+            <span>grams total</span>
+          </div>
+        </div>
+        <div className="chart-card chart-card--macro">
+          <div className="macro-ring">
+            <svg viewBox="0 0 120 120" role="img" aria-label="Macro distribution">
+              <circle cx="60" cy="60" r="44" className="macro-ring__track" />
+              {macroEntries.map((entry) => {
+                const fraction = total > 0 ? entry.value / total : 0
+                const segment = fraction * circumference
+                const dashOffset = -offset
+                offset += segment
+
+                return (
+                  <circle
+                    key={entry.key}
+                    cx="60"
+                    cy="60"
+                    r="44"
+                    pathLength={circumference}
+                    strokeDasharray={`${segment} ${circumference - segment}`}
+                    strokeDashoffset={dashOffset}
+                    className="macro-ring__segment"
+                    style={{ stroke: entry.color }}
+                  />
+                )
+              })}
+            </svg>
+            <div className="macro-ring__center">
+              <strong>{Math.round(day.total_calories)}</strong>
+              <span>kcal</span>
+            </div>
+          </div>
+          <div className="macro-legend">
+            {macroEntries.map((entry) => {
+              const share = total > 0 ? Math.round((entry.value / total) * 100) : 0
+
+              return (
+                <div key={entry.key} className="macro-legend__item">
+                  <span className="macro-legend__swatch" style={{ backgroundColor: entry.color }} />
+                  <div>
+                    <strong>
+                      {entry.short} {Math.round(entry.value)}g
+                    </strong>
+                    <span>
+                      {entry.label} · {share}%
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+    )
   }
 
   function renderHome() {
     if (!planData || !todayPlan) {
-      return renderEmptyHome();
+      return renderEmptyHome()
     }
 
     const actions: QuickAction[] = [
@@ -1472,6 +2466,12 @@ export default function NutriOnboardingApp() {
         onClick: () => pushScreen({ name: "shopping" }),
       },
       {
+        label: "System Integrations",
+        description: "Send the plan to Calendar, Files, Notes, or the system share sheet.",
+        icon: <ShareIcon className="icon" />,
+        onClick: () => pushScreen({ name: "integrations" }),
+      },
+      {
         label: "Profile",
         description: "Update goals, dislikes, allergies, and activity.",
         icon: <UserIcon className="icon" />,
@@ -1483,7 +2483,7 @@ export default function NutriOnboardingApp() {
         icon: <RefreshIcon className="icon" />,
         onClick: regenerateWeek,
       },
-    ];
+    ]
 
     return (
       <section className="screen-card screen-card--home">
@@ -1495,13 +2495,17 @@ export default function NutriOnboardingApp() {
               </div>
               <h1>Keep the day calm and on target</h1>
             </div>
-            <span className="hero-badge">{formatGoal(planData.user_profile?.goal || user?.goal)}</span>
+            <span className="hero-badge">
+              {formatGoal(planData.user_profile?.goal || user?.goal)}
+            </span>
           </div>
-        <div className="home-hero__bottom">
+          <div className="home-hero__bottom">
             <div className="progress-cluster">
               <div className="progress-cluster__value">{todayProgress}%</div>
               <div>
-                <strong>{Math.round(todayCalories)} / {Math.round(dailyTarget)} kcal</strong>
+                <strong>
+                  {Math.round(todayCalories)} / {Math.round(dailyTarget)} kcal
+                </strong>
                 <p>Today&apos;s planned calories</p>
               </div>
             </div>
@@ -1522,11 +2526,17 @@ export default function NutriOnboardingApp() {
                 <span>Carbs</span>
               </div>
             </div>
-            <button type="button" className="mini-link mini-link--light" onClick={openCalendarExport}>
-              Добавить в календарь
+            <button
+              type="button"
+              className="mini-link mini-link--light"
+              onClick={openCalendarExport}
+            >
+              Add to Calendar
             </button>
           </div>
         </div>
+
+        {renderResultDisclaimer()}
 
         <section className="section-block">
           <div className="section-heading">
@@ -1534,7 +2544,11 @@ export default function NutriOnboardingApp() {
               <span className="section-heading__eyebrow">Today&apos;s meals</span>
               <h2>Open any meal to see the full recipe</h2>
             </div>
-            <button type="button" className="mini-link" onClick={() => pushScreen({ name: "weekly" })}>
+            <button
+              type="button"
+              className="mini-link"
+              onClick={() => pushScreen({ name: "weekly" })}
+            >
               Full week
             </button>
           </div>
@@ -1542,6 +2556,12 @@ export default function NutriOnboardingApp() {
             {todayPlan.meals.map((meal) => renderMealCard(meal, "home"))}
           </div>
         </section>
+
+        <div className="analytics-grid">
+          {renderWeeklyCaloriesChart(todayPlan.day_number)}
+          {renderMacroBreakdownChart(todayPlan, "Macro balance for today", "Macro distribution")}
+        </div>
+        {renderObservabilityPanel("result")}
 
         <section className="section-block">
           <div className="section-heading">
@@ -1553,16 +2573,20 @@ export default function NutriOnboardingApp() {
           {renderQuickActions(actions)}
         </section>
       </section>
-    );
+    )
   }
 
   function renderWeeklyPlan() {
     if (!planData) {
-      return renderEmptyHome();
+      return renderEmptyHome()
     }
 
     const activeDay =
-      planData.days.find((day) => day.day_number === selectedDayNumber) ?? planData.days[0];
+      planData.days.find((day) => day.day_number === selectedDayNumber) ?? planData.days[0]
+
+    if (!activeDay) {
+      return renderEmptyHome()
+    }
 
     return (
       <section className="screen-card">
@@ -1574,10 +2598,21 @@ export default function NutriOnboardingApp() {
 
         <div className="section-toolbar section-toolbar--tight">
           <div className="soft-copy">Export the whole week as an iCalendar file.</div>
-          <button type="button" className="mini-link" onClick={openCalendarExport}>
-            Добавить в календарь
-          </button>
+          <div className="toolbar-actions">
+            <button type="button" className="mini-link" onClick={openCalendarExport}>
+              Calendar
+            </button>
+            <button
+              type="button"
+              className="mini-link"
+              onClick={() => pushScreen({ name: "integrations" })}
+            >
+              More
+            </button>
+          </div>
         </div>
+
+        {renderResultDisclaimer()}
 
         <div className="chip-row" role="tablist" aria-label="Plan days">
           {planData.days.map((day) => (
@@ -1608,34 +2643,42 @@ export default function NutriOnboardingApp() {
           </div>
         </div>
 
+        {renderWeeklyCaloriesChart(activeDay.day_number)}
+        {renderMacroBreakdownChart(activeDay, "Macros for the selected day", "Selected day")}
+        {renderObservabilityPanel("result")}
+
         <div className="meal-stack meal-stack--compact">
           {activeDay.meals.map((meal) => renderMealCard(meal, "weekly"))}
         </div>
       </section>
-    );
+    )
   }
 
   function renderRecipeDetail() {
     if (currentScreen.name !== "recipe") {
-      return null;
+      return null
     }
 
-    const recipe = getRecipeById(currentScreen.recipeId);
-    const meal = getMealByRecipeId(currentScreen.recipeId);
+    const recipe = getRecipeById(currentScreen.recipeId)
+    const meal = getMealByRecipeId(currentScreen.recipeId)
 
     if (!meal) {
       return (
         <section className="screen-card">
-          <ScreenHeader title="Recipe" subtitle="Could not find this recipe in the current plan." onBack={popScreen} />
+          <ScreenHeader
+            title="Recipe"
+            subtitle="Could not find this recipe in the current plan."
+            onBack={popScreen}
+          />
           <div className="empty-state">
             <h3>Recipe not available</h3>
             <p>Return to Today or Weekly Plan and pick another meal card.</p>
           </div>
         </section>
-      );
+      )
     }
 
-    const ingredients = recipe?.ingredients ?? meal.ingredients_summary ?? [];
+    const ingredients = recipe?.ingredients ?? meal.ingredients_summary ?? []
 
     return (
       <section className="screen-card screen-card--detail">
@@ -1645,11 +2688,16 @@ export default function NutriOnboardingApp() {
           onBack={popScreen}
         />
 
+        {renderResultDisclaimer()}
+
         <div className={`${mealVisualClass(meal.type)} meal-visual--detail`}>
           <div className="meal-visual__content meal-visual__content--detail">
             <span className="pill pill--soft">{formatMealType(meal.type)}</span>
             <strong>{meal.title}</strong>
-            <p>{meal.time || "Anytime meal"} · {recipe?.prep_time_min ? `${recipe.prep_time_min} min` : "Ready when you are"}</p>
+            <p>
+              {meal.time || "Anytime meal"} ·{" "}
+              {recipe?.prep_time_min ? `${recipe.prep_time_min} min` : "Ready when you are"}
+            </p>
           </div>
         </div>
 
@@ -1671,6 +2719,33 @@ export default function NutriOnboardingApp() {
             <span>Carbs</span>
           </div>
         </div>
+
+        <section className="detail-block">
+          <div className="section-heading">
+            <div>
+              <span className="section-heading__eyebrow">Plan controls</span>
+              <h2>Adjust this meal</h2>
+            </div>
+          </div>
+          <div className="meal-control-grid">
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => void swapCurrentMeal(currentScreen.recipeId)}
+              disabled={mealActionLoading !== null}
+            >
+              {mealActionLoading === "swap" ? "Replacing..." : "Replace meal"}
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => void cancelCurrentMeal(currentScreen.recipeId)}
+              disabled={mealActionLoading !== null}
+            >
+              {mealActionLoading === "cancel" ? "Removing..." : "Remove"}
+            </button>
+          </div>
+        </section>
 
         <section className="detail-block">
           <div className="section-heading">
@@ -1703,12 +2778,17 @@ export default function NutriOnboardingApp() {
           </div>
           <div className="ingredient-list">
             {ingredients.map((ingredient) => (
-              <div key={`${ingredient.name}-${ingredient.amount}-${ingredient.unit}`} className="ingredient-row">
+              <div
+                key={`${ingredient.name}-${ingredient.amount}-${ingredient.unit}`}
+                className="ingredient-row"
+              >
                 <div>
                   <strong>{ingredient.name}</strong>
                   <span>{ingredient.unit}</span>
                 </div>
-                <span>{ingredient.amount} {ingredient.unit}</span>
+                <span>
+                  {ingredient.amount} {ingredient.unit}
+                </span>
               </div>
             ))}
           </div>
@@ -1719,12 +2799,16 @@ export default function NutriOnboardingApp() {
             <strong>{Math.round(meal.calories)} kcal</strong>
             <span>{formatMealType(meal.type)}</span>
           </div>
-          <button type="button" className="button button--primary" onClick={() => pushScreen({ name: "shopping" })}>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => pushScreen({ name: "shopping" })}
+          >
             Open shopping list
           </button>
         </div>
       </section>
-    );
+    )
   }
 
   function renderShopping() {
@@ -1736,18 +2820,34 @@ export default function NutriOnboardingApp() {
           onBack={popScreen}
         />
 
+        {renderResultDisclaimer()}
+
+        {renderObservabilityPanel("result")}
+
         <div className="section-toolbar">
           <div className="soft-copy">
-            {shoppingList?.length ? `${shoppingList.length} items grouped for the week` : "Loading items..."}
+            {shoppingList?.length
+              ? `${shoppingList.length} items grouped for the week`
+              : "Loading items..."}
           </div>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            onClick={copyShoppingItems}
-            disabled={!shoppingList?.length}
-          >
-            {shoppingCopied ? "Copied" : "Copy"}
-          </button>
+          <div className="chip-row">
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={openShoppingListPdf}
+              disabled={!shoppingList?.length}
+            >
+              PDF
+            </button>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={copyShoppingItems}
+              disabled={!shoppingList?.length}
+            >
+              {shoppingCopied ? "Copied" : "Copy"}
+            </button>
+          </div>
         </div>
 
         {shoppingLoading ? (
@@ -1765,7 +2865,9 @@ export default function NutriOnboardingApp() {
                   <strong>{item.name}</strong>
                   <span>{item.unit}</span>
                 </div>
-                <span>{item.amount} {item.unit}</span>
+                <span>
+                  {item.amount} {item.unit}
+                </span>
               </div>
             ))}
           </div>
@@ -1778,7 +2880,112 @@ export default function NutriOnboardingApp() {
           </div>
         ) : null}
       </section>
-    );
+    )
+  }
+
+  function renderSystemIntegrations() {
+    const hasSystemShare = typeof navigator !== "undefined" && typeof navigator.share === "function"
+    const integrationActions = [
+      {
+        label: "Local Calendar",
+        description:
+          "Download an iCalendar file with every meal time for Apple Calendar, Google Calendar, or Outlook.",
+        meta: planRecord?.id ? "ICS export" : "Needs an active plan",
+        icon: <CalendarIcon className="icon" />,
+        onClick: openCalendarExport,
+        disabled: !planRecord?.id,
+      },
+      {
+        label: "System Share",
+        description:
+          "Send the week summary through the mobile share sheet, or copy it when sharing is unavailable.",
+        meta: hasSystemShare ? "Native share sheet" : "Clipboard fallback",
+        icon: <ShareIcon className="icon" />,
+        onClick: () => void sharePlanSummary(),
+        disabled: !planData,
+      },
+      {
+        label: "Notes and Chat",
+        description:
+          "Copy a readable day-by-day summary for Notes, Telegram, email, or a local text file.",
+        meta: "Plain text",
+        icon: <ClipboardIcon className="icon" />,
+        onClick: () => void copyPlanSummary(),
+        disabled: !planData,
+      },
+      {
+        label: "Shopping PDF",
+        description:
+          "Save a printable grocery list that works with Files, Preview, and any PDF reader.",
+        meta: "PDF export",
+        icon: <FileIcon className="icon" />,
+        onClick: openShoppingListPdf,
+        disabled: !planRecord?.id,
+      },
+      {
+        label: "Grocery Clipboard",
+        description:
+          "Copy the aggregated shopping list for reminders, notes, or another grocery app.",
+        meta: shoppingList?.length ? `${shoppingList.length} items ready` : "Loads on demand",
+        icon: <CartIcon className="icon" />,
+        onClick: () => void copyShoppingItems(),
+        disabled: !planRecord?.id || shoppingLoading,
+      },
+    ]
+
+    return (
+      <section className="screen-card screen-card--integrations">
+        <ScreenHeader
+          title="Integrations"
+          subtitle="Local-first exports for the systems you already use on your phone."
+          onBack={popScreen}
+        />
+
+        <div className="integration-summary">
+          <div>
+            <span className="section-heading__eyebrow">Connected plan</span>
+            <h2>{planData ? `${PLAN_DAYS}-day meal plan` : "No active plan"}</h2>
+            <p>
+              {planData
+                ? "Calendar, share, file, and clipboard actions use the same saved plan."
+                : "Generate a plan first, then exports will become available here."}
+            </p>
+          </div>
+          <div className="integration-summary__metric">
+            <strong>{planData?.days.length ?? 0}</strong>
+            <span>days</span>
+          </div>
+        </div>
+
+        <div className="integration-list">
+          {integrationActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className="integration-action"
+              onClick={action.onClick}
+              disabled={action.disabled}
+            >
+              <span className="action-card__icon">{action.icon}</span>
+              <div>
+                <strong>{action.label}</strong>
+                <p>{action.description}</p>
+                <span>{action.meta}</span>
+              </div>
+              <ChevronRightIcon className="icon action-card__chevron" />
+            </button>
+          ))}
+        </div>
+
+        <div className="disclaimer-banner">
+          <strong>Local calendar note</strong>
+          <p>
+            Browsers cannot silently write into a local calendar. NutriAgent exports a standard
+            `.ics` file, and the calendar app handles the import confirmation.
+          </p>
+        </div>
+      </section>
+    )
   }
 
   function renderProfile() {
@@ -1909,7 +3116,12 @@ export default function NutriOnboardingApp() {
           <button type="button" className="button button--ghost" onClick={popScreen}>
             Back
           </button>
-          <button type="button" className="button button--primary" onClick={saveProfile} disabled={isSavingProfile}>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={saveProfile}
+            disabled={isSavingProfile}
+          >
             {isSavingProfile ? "Saving..." : "Save profile"}
           </button>
         </div>
@@ -1917,40 +3129,110 @@ export default function NutriOnboardingApp() {
         <button type="button" className="secondary-cta" onClick={regenerateWeek}>
           Generate fresh week with these settings
         </button>
+        <button type="button" className="secondary-cta secondary-cta--quiet" onClick={signOut}>
+          Sign out
+        </button>
       </section>
-    );
+    )
+  }
+
+  function shouldShowBottomNav() {
+    return (
+      !isBooting &&
+      currentScreen.name !== "onboarding" &&
+      currentScreen.name !== "generating" &&
+      currentScreen.name !== "recipe"
+    )
+  }
+
+  function renderBottomNav() {
+    if (!shouldShowBottomNav()) {
+      return null
+    }
+
+    const items: BottomNavItem[] = [
+      {
+        screen: { name: "home" },
+        label: "Today",
+        icon: <AppIcon className="icon" />,
+      },
+      {
+        screen: { name: "weekly" },
+        label: "Week",
+        icon: <CalendarIcon className="icon" />,
+        requiresPlan: true,
+      },
+      {
+        screen: { name: "shopping" },
+        label: "Shop",
+        icon: <CartIcon className="icon" />,
+        requiresPlan: true,
+      },
+      {
+        screen: { name: "integrations" },
+        label: "Export",
+        icon: <ShareIcon className="icon" />,
+        requiresPlan: true,
+      },
+      {
+        screen: { name: "profile" },
+        label: "Profile",
+        icon: <UserIcon className="icon" />,
+      },
+    ]
+
+    return (
+      <nav className="bottom-nav" aria-label="Primary">
+        {items.map((item) => {
+          const disabled = item.requiresPlan && !planData
+          const isActive = currentScreen.name === item.screen.name
+
+          return (
+            <button
+              key={item.label}
+              type="button"
+              className={`bottom-nav__item ${isActive ? "is-active" : ""}`}
+              onClick={() => resetToScreen(item.screen)}
+              disabled={disabled}
+              aria-current={isActive ? "page" : undefined}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+    )
   }
 
   function renderCurrentScreen() {
     if (isBooting) {
-      return renderBoot();
+      return renderBoot()
     }
 
     switch (currentScreen.name) {
       case "generating":
-        return renderGenerating();
+        return renderGenerating()
       case "home":
-        return renderHome();
+        return renderHome()
       case "weekly":
-        return renderWeeklyPlan();
+        return renderWeeklyPlan()
       case "shopping":
-        return renderShopping();
+        return renderShopping()
+      case "integrations":
+        return renderSystemIntegrations()
       case "profile":
-        return renderProfile();
+        return renderProfile()
       case "recipe":
-        return renderRecipeDetail();
-      case "onboarding":
+        return renderRecipeDetail()
       default:
-        return renderOnboarding();
+        return renderOnboarding()
     }
   }
 
   return (
     <main className="app-shell">
-      <div className="phone-shell">
-        <div className="phone-shell__glow phone-shell__glow--top" />
-        <div className="phone-shell__glow phone-shell__glow--bottom" />
-
+      <div className={`phone-shell ${shouldShowBottomNav() ? "has-bottom-nav" : ""}`}>
         {(globalNotice || errorNotice) && (
           <div className={`floating-notice ${errorNotice ? "is-error" : ""}`}>
             <strong>{errorNotice ? "Attention" : "Updated"}</strong>
@@ -1959,7 +3241,8 @@ export default function NutriOnboardingApp() {
         )}
 
         {renderCurrentScreen()}
+        {renderBottomNav()}
       </div>
     </main>
-  );
+  )
 }

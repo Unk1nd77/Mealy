@@ -53,7 +53,9 @@ async def test_run_catalog_ingest_returns_runtime_payload(monkeypatch):
     monkeypatch.setattr(
         tasks,
         "_publish_progress",
-        lambda task, state, celery_state="GENERATING": progress_events.append((celery_state, state)),
+        lambda task, state, celery_state="GENERATING": progress_events.append(
+            (celery_state, state)
+        ),
     )
 
     result = await tasks._run_catalog_ingest(

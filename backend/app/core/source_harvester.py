@@ -6,10 +6,16 @@ import re
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from loguru import logger
 
 from app.config import settings
 from app.core.source_discovery import DiscoverySourceOutput
-from app.core.source_policy import DomainPolicy, load_source_policy, match_domain_policy, validate_url_against_policy
+from app.core.source_policy import (
+    DomainPolicy,
+    load_source_policy,
+    match_domain_policy,
+    validate_url_against_policy,
+)
 
 _LOC_RE = re.compile(r"<loc>\s*(.*?)\s*</loc>", re.IGNORECASE)
 _SITEMAP_RE = re.compile(r"^\s*Sitemap:\s*(\S+)\s*$", re.IGNORECASE | re.MULTILINE)
@@ -18,7 +24,9 @@ _URL_TOKEN_RE = re.compile(r"""(?:(?:https?://)[^\s"'<>]+|/[A-Za-z0-9_./?%:#=&+-
 
 
 async def _fetch_text(url: str) -> str:
-    async with httpx.AsyncClient(timeout=settings.CATALOG_SOURCE_FETCH_TIMEOUT_SEC, follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        timeout=settings.CATALOG_SOURCE_FETCH_TIMEOUT_SEC, follow_redirects=True
+    ) as client:
         response = await client.get(url)
         response.raise_for_status()
         return response.text[: settings.CATALOG_SOURCE_MAX_BYTES]
@@ -53,7 +61,9 @@ def _extract_embedded_urls(html_text: str, *, base_url: str) -> list[str]:
     return links
 
 
-async def _discover_from_sitemaps(domain_policy: DomainPolicy, *, query: str | None = None) -> list[str]:
+async def _discover_from_sitemaps(
+    domain_policy: DomainPolicy, *, query: str | None = None
+) -> list[str]:
     base_url = f"https://{domain_policy.domain}"
     sitemap_urls: list[str] = []
     try:
@@ -70,7 +80,8 @@ async def _discover_from_sitemaps(domain_policy: DomainPolicy, *, query: str | N
     for sitemap_url in sitemap_urls[:3]:
         try:
             xml_text = await _fetch_text(sitemap_url)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Skipping sitemap {}: {}", sitemap_url, exc)
             continue
         for url in _extract_loc_urls(xml_text):
             ok, _ = validate_url_against_policy(url)
@@ -89,7 +100,9 @@ async def _discover_from_sitemaps(domain_policy: DomainPolicy, *, query: str | N
     return fallback_candidates[: load_source_policy().max_pages_per_domain]
 
 
-async def _discover_from_category_pages(domain_policy: DomainPolicy, *, query: str | None = None) -> list[str]:
+async def _discover_from_category_pages(
+    domain_policy: DomainPolicy, *, query: str | None = None
+) -> list[str]:
     query_tokens = [token.lower() for token in (query or "").split() if token.strip()]
     discovered: list[str] = []
     fallback_candidates: list[str] = []
@@ -104,7 +117,11 @@ async def _discover_from_category_pages(domain_policy: DomainPolicy, *, query: s
                 break
             page_had_candidates = False
             page_links = _extract_html_links(html_text, base_url=page_url)
-            page_links.extend(link for link in _extract_embedded_urls(html_text, base_url=page_url) if link not in page_links)
+            page_links.extend(
+                link
+                for link in _extract_embedded_urls(html_text, base_url=page_url)
+                if link not in page_links
+            )
             for link in page_links:
                 ok, _ = validate_url_against_policy(link)
                 if not ok:
@@ -112,7 +129,9 @@ async def _discover_from_category_pages(domain_policy: DomainPolicy, *, query: s
                 page_had_candidates = True
                 lowered = link.lower()
                 path = urlparse(link).path.lower()
-                if query_tokens and any(token in lowered or token in path for token in query_tokens):
+                if query_tokens and any(
+                    token in lowered or token in path for token in query_tokens
+                ):
                     if link not in discovered:
                         discovered.append(link)
                 elif link not in fallback_candidates:
@@ -126,7 +145,9 @@ async def _discover_from_category_pages(domain_policy: DomainPolicy, *, query: s
     return fallback_candidates[: load_source_policy().max_pages_per_domain]
 
 
-async def discover_source_urls(*, query: str | None = None, domains: list[str] | None = None) -> list[DiscoverySourceOutput]:
+async def discover_source_urls(
+    *, query: str | None = None, domains: list[str] | None = None
+) -> list[DiscoverySourceOutput]:
     policy = load_source_policy()
     selected: list[DomainPolicy] = []
     if domains:

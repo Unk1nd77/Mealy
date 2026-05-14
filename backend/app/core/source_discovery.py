@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
 from urllib.parse import urlparse
 
 from sqlalchemy import select
@@ -40,7 +41,9 @@ def validate_source_url(url: str) -> tuple[bool, dict[str, Any]]:
     return ok, report
 
 
-async def _find_existing_source_candidate(session: AsyncSession, *, url: str) -> SourceCandidate | None:
+async def _find_existing_source_candidate(
+    session: AsyncSession, *, url: str
+) -> SourceCandidate | None:
     result = await session.execute(select(SourceCandidate).where(SourceCandidate.url == url))
     return result.scalar_one_or_none()
 

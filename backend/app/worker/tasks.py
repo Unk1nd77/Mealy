@@ -9,18 +9,19 @@ from typing import Literal
 from loguru import logger
 
 from app.core.agent_cli_runtime import run_agent_cli_pipeline
-from app.core.catalog_agent_runtime import run_catalog_agent_pipeline
-from app.core.catalog_agents import build_research_agent, build_verification_agent
-from app.core.source_discovery import DiscoverySourceOutput
-from app.core.source_harvester import discover_source_urls
-from app.core.source_discovery_runtime import run_source_discovery_pipeline
 from app.core.canonical_pipeline import (
     create_plan_record,
     finalize_plan_record,
     load_candidate_recipes,
     load_user_profile,
 )
+from app.core.catalog_agent_runtime import run_catalog_agent_pipeline
+from app.core.catalog_agents import build_research_agent, build_verification_agent
 from app.core.generation_meta import PIPELINE_STEPS, build_generation_meta
+from app.core.relational_store import finalize_generation_run_by_task_id
+from app.core.source_discovery import DiscoverySourceOutput
+from app.core.source_discovery_runtime import run_source_discovery_pipeline
+from app.core.source_harvester import discover_source_urls
 from app.worker import celery_app
 
 _worker_loop: asyncio.AbstractEventLoop | None = None
@@ -187,9 +188,7 @@ async def _generate(user_id: str, days: int, task=None) -> dict:
                 if day_result.quality_status != "valid":
                     quality_status = "partially_valid"
                 if day_result.validation_error:
-                    generation_warnings.append(
-                        f"Day {day_num}: {day_result.validation_error}"
-                    )
+                    generation_warnings.append(f"Day {day_num}: {day_result.validation_error}")
             progress_state["quality_status"] = quality_status
             progress_state["warnings"] = generation_warnings
             _set_step(
@@ -346,7 +345,16 @@ async def _generate_by_mode(
     return await _generate(user_id, days, task=task)
 
 
-async def _run_catalog_ingest(seed_input: dict, task=None, progress_state_holder: dict | None = None) -> dict:
+async def _finalize_generation_task_run(task_id: str, result: dict) -> None:
+    from app.db.session import async_session
+
+    async with async_session() as session:
+        await finalize_generation_run_by_task_id(session, task_id=task_id, result=result)
+
+
+async def _run_catalog_ingest(
+    seed_input: dict, task=None, progress_state_holder: dict | None = None
+) -> dict:
     from app.db.session import async_session
 
     progress_state = {
@@ -391,11 +399,15 @@ async def _run_catalog_ingest(seed_input: dict, task=None, progress_state_holder
     if progress_state_holder is not None:
         progress_state_holder["state"] = deepcopy(payload)
     if task is not None:
-        _publish_progress(task, payload, celery_state="SUCCESS" if result.status == "ACCEPTED" else "GENERATING")
+        _publish_progress(
+            task, payload, celery_state="SUCCESS" if result.status == "ACCEPTED" else "GENERATING"
+        )
     return payload
 
 
-async def _run_source_discovery_ingest(seed_input: dict, task=None, progress_state_holder: dict | None = None) -> dict:
+async def _run_source_discovery_ingest(
+    seed_input: dict, task=None, progress_state_holder: dict | None = None
+) -> dict:
     from app.db.session import async_session
 
     progress_state = {
@@ -443,7 +455,9 @@ async def _run_source_discovery_ingest(seed_input: dict, task=None, progress_sta
     if progress_state_holder is not None:
         progress_state_holder["state"] = deepcopy(payload)
     if task is not None:
-        _publish_progress(task, payload, celery_state="SUCCESS" if result.status == "ACCEPTED" else "GENERATING")
+        _publish_progress(
+            task, payload, celery_state="SUCCESS" if result.status == "ACCEPTED" else "GENERATING"
+        )
     return payload
 
 
@@ -458,7 +472,7 @@ def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agent_cli
     self.update_state(state="GENERATING")
     progress_state_holder: dict[str, dict] = {}
     try:
-        return _run_async(
+        result = _run_async(
             _generate_by_mode(
                 user_id,
                 days,
@@ -467,10 +481,14 @@ def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agent_cli
                 progress_state_holder=progress_state_holder,
             )
         )
+        _run_async(_finalize_generation_task_run(str(self.request.id), result))
+        return result
     except Exception as exc:
-        logger.exception("Task failed: generate_meal_plan user={} days={} mode={}", user_id, days, mode)
+        logger.exception(
+            "Task failed: generate_meal_plan user={} days={} mode={}", user_id, days, mode
+        )
         last_state = progress_state_holder.get("state") or {}
-        return {
+        result = {
             "status": "FAILED",
             "mode": mode,
             "quality_status": "failed",
@@ -479,6 +497,8 @@ def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agent_cli
             "steps": last_state.get("steps") or [],
             "current_step": last_state.get("current_step"),
         }
+        _run_async(_finalize_generation_task_run(str(self.request.id), result))
+        return result
 
 
 @celery_app.task(name="run_catalog_ingest", bind=True)

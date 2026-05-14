@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from app.core.catalog_agent_runtime import CatalogAgentRuntimeResult, run_catalog_agent_pipeline
 from app.core.source_discovery import (
@@ -36,7 +37,9 @@ def _empty_steps() -> list[dict[str, Any]]:
     return [{"key": step, "status": "pending", "message": ""} for step in DISCOVERY_PIPELINE_STEPS]
 
 
-def _set_step(state: dict[str, Any], key: str, *, status: str, message: str, activate: bool = True) -> None:
+def _set_step(
+    state: dict[str, Any], key: str, *, status: str, message: str, activate: bool = True
+) -> None:
     if activate:
         state["current_step"] = key
     for step in state["steps"]:
@@ -73,15 +76,27 @@ async def run_source_discovery_pipeline(
     }
 
     try:
-        _set_step(state, "discover", status="running", message="Discovery agent is finding source URLs.")
+        _set_step(
+            state, "discover", status="running", message="Discovery agent is finding source URLs."
+        )
         _emit(progress_callback, state)
         discovered_sources = await discovery_agent(seed_input)
         if not discovered_sources:
             raise RuntimeError("Discovery returned no source URLs")
         source = discovered_sources[0]
-        _set_step(state, "discover", status="completed", message="Discovery agent produced source candidates.")
+        _set_step(
+            state,
+            "discover",
+            status="completed",
+            message="Discovery agent produced source candidates.",
+        )
 
-        _set_step(state, "source", status="running", message="Fetching and validating discovered source URL.")
+        _set_step(
+            state,
+            "source",
+            status="running",
+            message="Fetching and validating discovered source URL.",
+        )
         _emit(progress_callback, state)
         source_candidate = await create_source_candidate(
             session,
@@ -98,10 +113,15 @@ async def run_source_discovery_pipeline(
                 state,
                 "source",
                 status="failed",
-                message=((source_candidate.validation_report or {}).get("notes") or ["Source validation failed."])[0],
+                message=(
+                    (source_candidate.validation_report or {}).get("notes")
+                    or ["Source validation failed."]
+                )[0],
             )
             state["status"] = "FAILED"
-            state["reason_codes"] = (source_candidate.validation_report or {}).get("reason_codes") or []
+            state["reason_codes"] = (source_candidate.validation_report or {}).get(
+                "reason_codes"
+            ) or []
             state["error"] = ((source_candidate.validation_report or {}).get("notes") or [None])[0]
             _emit(progress_callback, state)
             return DiscoveryRuntimeResult(
@@ -112,12 +132,19 @@ async def run_source_discovery_pipeline(
                 steps=deepcopy(state["steps"]),
                 current_step=state["current_step"],
             )
-        _set_step(state, "source", status="completed", message="Source URL fetched and allowlist validation passed.")
+        _set_step(
+            state,
+            "source",
+            status="completed",
+            message="Source URL fetched and allowlist validation passed.",
+        )
 
         def catalog_progress(inner_state: dict[str, Any]) -> None:
             for step in state["steps"]:
                 if step["key"] in {"research", "candidate", "verify", "admit"}:
-                    match = next((s for s in inner_state.get("steps", []) if s["key"] == step["key"]), None)
+                    match = next(
+                        (s for s in inner_state.get("steps", []) if s["key"] == step["key"]), None
+                    )
                     if match is not None:
                         step["status"] = match["status"]
                         step["message"] = match["message"]

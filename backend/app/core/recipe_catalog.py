@@ -6,8 +6,8 @@ portion-scaling layer from obviously broken, unsafe or absurd recipe payloads.
 
 from __future__ import annotations
 
-from copy import deepcopy
 import re
+from copy import deepcopy
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -93,7 +93,7 @@ class RecipeCatalogError(ValueError):
         self.reason_code = reason_code
 
 
-def _ingredient_groups(ingredients: list["IngredientPayload"]) -> set[str]:
+def _ingredient_groups(ingredients: list[IngredientPayload]) -> set[str]:
     groups: set[str] = set()
     for ingredient in ingredients:
         lowered = ingredient.name.lower()
@@ -103,7 +103,7 @@ def _ingredient_groups(ingredients: list["IngredientPayload"]) -> set[str]:
     return groups
 
 
-def _validate_ingredient_compatibility(ingredients: list["IngredientPayload"]) -> None:
+def _validate_ingredient_compatibility(ingredients: list[IngredientPayload]) -> None:
     present_groups = _ingredient_groups(ingredients)
     for rule in _UNSAFE_COMBINATION_RULES:
         if all(group in present_groups for group in rule["all_groups"]):
@@ -205,7 +205,15 @@ class RecipePayload(BaseModel):
             return None
         normalized = value.strip().lower()
         normalized = _MEAL_TYPE_ALIASES.get(normalized, normalized)
-        if normalized not in {"breakfast", "lunch", "dinner", "snack", "second_snack", "lunch/dinner", "universal"}:
+        if normalized not in {
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack",
+            "second_snack",
+            "lunch/dinner",
+            "universal",
+        }:
             raise RecipeCatalogError(f"Unsupported meal_type: {value}")
         return normalized
 
@@ -246,7 +254,9 @@ def normalize_recipe_payload(payload: dict[str, Any]) -> dict[str, Any]:
         raise RecipeCatalogError(first_error["msg"]) from exc
     data = recipe.model_dump()
     if not data.get("ingredients_short"):
-        data["ingredients_short"] = ", ".join(ingredient["name"] for ingredient in data["ingredients"][:8])
+        data["ingredients_short"] = ", ".join(
+            ingredient["name"] for ingredient in data["ingredients"][:8]
+        )
     return data
 
 

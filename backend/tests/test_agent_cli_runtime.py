@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from app.core import agent_cli_runtime
 from app.core.agent.orchestrator import GeneratedDayResult
 from app.core.agent.schemas import DayPlanFull, MealItemFull
-from app.core import agent_cli_runtime
 
 
 def _context(day_number: int) -> dict:
@@ -113,7 +113,9 @@ async def test_agent_cli_runtime_returns_ready_and_progress(monkeypatch):
         return _context(day)
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
-        return _day_result(day_number, quality_status="partially_valid" if day_number == 2 else "valid")
+        return _day_result(
+            day_number, quality_status="partially_valid" if day_number == 2 else "valid"
+        )
 
     async def fake_save(user_id: str, plan_data: dict, *, days_count: int):
         assert plan_data["generation_meta"]["mode"] == "agent_cli"
@@ -295,7 +297,9 @@ async def test_agent_cli_runtime_auto_fixes_duplicate_meal_types(monkeypatch):
     assert result["status"] == "READY"
     assert result["quality_status"] == "partially_valid"
     assert any("auto-fix after" in warning for warning in result["warnings"])
-    assert any(step["key"] == "auto-fix" and step["status"] == "completed" for step in result["steps"])
+    assert any(
+        step["key"] == "auto-fix" and step["status"] == "completed" for step in result["steps"]
+    )
     assert progress_events[-1][0] == "SUCCESS"
 
 
@@ -331,7 +335,10 @@ async def test_agent_cli_runtime_fails_fast_on_catalog_insufficiency(monkeypatch
         )
 
     assert progress_events[-1][0] == "GENERATING"
-    assert any(step["key"] == "context" and step["status"] == "failed" for step in progress_events[-1][1]["steps"])
+    assert any(
+        step["key"] == "context" and step["status"] == "failed"
+        for step in progress_events[-1][1]["steps"]
+    )
 
 
 @pytest.mark.asyncio
@@ -464,10 +471,50 @@ async def test_agent_cli_runtime_auto_fix_avoids_repeating_previous_day_recipe_w
                     total_fat=70,
                     total_carbs=180,
                     meals=[
-                        MealItemFull(type="breakfast", time="08:00", recipe_id="breakfast-a", title="Breakfast A", calories=500, protein=30, fat=15, carbs=45, ingredients_summary=[]),
-                        MealItemFull(type="lunch", time="13:00", recipe_id="lunch-a", title="Lunch A", calories=700, protein=45, fat=20, carbs=60, ingredients_summary=[]),
-                        MealItemFull(type="dinner", time="19:00", recipe_id="dinner-a", title="Dinner A", calories=600, protein=40, fat=20, carbs=50, ingredients_summary=[]),
-                        MealItemFull(type="snack", time="16:00", recipe_id="snack-a", title="Snack A", calories=200, protein=20, fat=15, carbs=25, ingredients_summary=[]),
+                        MealItemFull(
+                            type="breakfast",
+                            time="08:00",
+                            recipe_id="breakfast-a",
+                            title="Breakfast A",
+                            calories=500,
+                            protein=30,
+                            fat=15,
+                            carbs=45,
+                            ingredients_summary=[],
+                        ),
+                        MealItemFull(
+                            type="lunch",
+                            time="13:00",
+                            recipe_id="lunch-a",
+                            title="Lunch A",
+                            calories=700,
+                            protein=45,
+                            fat=20,
+                            carbs=60,
+                            ingredients_summary=[],
+                        ),
+                        MealItemFull(
+                            type="dinner",
+                            time="19:00",
+                            recipe_id="dinner-a",
+                            title="Dinner A",
+                            calories=600,
+                            protein=40,
+                            fat=20,
+                            carbs=50,
+                            ingredients_summary=[],
+                        ),
+                        MealItemFull(
+                            type="snack",
+                            time="16:00",
+                            recipe_id="snack-a",
+                            title="Snack A",
+                            calories=200,
+                            protein=20,
+                            fat=15,
+                            carbs=25,
+                            ingredients_summary=[],
+                        ),
                     ],
                 ),
                 quality_status="valid",
@@ -483,10 +530,50 @@ async def test_agent_cli_runtime_auto_fix_avoids_repeating_previous_day_recipe_w
                 total_fat=70,
                 total_carbs=180,
                 meals=[
-                    MealItemFull(type="breakfast", time="08:00", recipe_id="breakfast-b", title="Breakfast B", calories=500, protein=30, fat=15, carbs=45, ingredients_summary=[]),
-                    MealItemFull(type="lunch", time="13:00", recipe_id="lunch-b", title="Lunch B", calories=700, protein=45, fat=20, carbs=60, ingredients_summary=[]),
-                    MealItemFull(type="dinner", time="19:00", recipe_id="dinner-a", title="Dinner A", calories=600, protein=40, fat=20, carbs=50, ingredients_summary=[]),
-                    MealItemFull(type="snack", time="16:00", recipe_id="snack-a", title="Snack A", calories=200, protein=20, fat=15, carbs=25, ingredients_summary=[]),
+                    MealItemFull(
+                        type="breakfast",
+                        time="08:00",
+                        recipe_id="breakfast-b",
+                        title="Breakfast B",
+                        calories=500,
+                        protein=30,
+                        fat=15,
+                        carbs=45,
+                        ingredients_summary=[],
+                    ),
+                    MealItemFull(
+                        type="lunch",
+                        time="13:00",
+                        recipe_id="lunch-b",
+                        title="Lunch B",
+                        calories=700,
+                        protein=45,
+                        fat=20,
+                        carbs=60,
+                        ingredients_summary=[],
+                    ),
+                    MealItemFull(
+                        type="dinner",
+                        time="19:00",
+                        recipe_id="dinner-a",
+                        title="Dinner A",
+                        calories=600,
+                        protein=40,
+                        fat=20,
+                        carbs=50,
+                        ingredients_summary=[],
+                    ),
+                    MealItemFull(
+                        type="snack",
+                        time="16:00",
+                        recipe_id="snack-a",
+                        title="Snack A",
+                        calories=200,
+                        protein=20,
+                        fat=15,
+                        carbs=25,
+                        ingredients_summary=[],
+                    ),
                 ],
             ),
             quality_status="partially_valid",
@@ -517,8 +604,16 @@ async def test_agent_cli_runtime_auto_fix_avoids_repeating_previous_day_recipe_w
             "meals": [
                 {
                     **meal,
-                    "recipe_id": "dinner-b" if meal["type"] == "dinner" else "snack-b" if meal["type"] == "snack" else meal["recipe_id"],
-                    "title": "Dinner B" if meal["type"] == "dinner" else "Snack B" if meal["type"] == "snack" else meal["title"],
+                    "recipe_id": "dinner-b"
+                    if meal["type"] == "dinner"
+                    else "snack-b"
+                    if meal["type"] == "snack"
+                    else meal["recipe_id"],
+                    "title": "Dinner B"
+                    if meal["type"] == "dinner"
+                    else "Snack B"
+                    if meal["type"] == "snack"
+                    else meal["title"],
                 }
                 for meal in day_plan["meals"]
             ],

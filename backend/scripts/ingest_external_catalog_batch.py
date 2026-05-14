@@ -22,7 +22,9 @@ from app.db.models import Recipe, RecipeCandidate, RecipeCandidateStatus, Source
 from app.db.session import async_session, engine
 
 
-def _dedupe_sources(sources: list[DiscoverySourceOutput], *, limit: int | None = None) -> list[DiscoverySourceOutput]:
+def _dedupe_sources(
+    sources: list[DiscoverySourceOutput], *, limit: int | None = None
+) -> list[DiscoverySourceOutput]:
     unique: list[DiscoverySourceOutput] = []
     seen: set[str] = set()
     for source in sources:
@@ -41,19 +43,19 @@ async def _print_db_summary() -> None:
         candidate_count = await session.scalar(select(func.count()).select_from(RecipeCandidate))
         source_count = await session.scalar(select(func.count()).select_from(SourceCandidate))
         accepted_count = await session.scalar(
-            select(func.count()).select_from(RecipeCandidate).where(
-                RecipeCandidate.status == RecipeCandidateStatus.accepted
-            )
+            select(func.count())
+            .select_from(RecipeCandidate)
+            .where(RecipeCandidate.status == RecipeCandidateStatus.accepted)
         )
         review_count = await session.scalar(
-            select(func.count()).select_from(RecipeCandidate).where(
-                RecipeCandidate.status == RecipeCandidateStatus.review
-            )
+            select(func.count())
+            .select_from(RecipeCandidate)
+            .where(RecipeCandidate.status == RecipeCandidateStatus.review)
         )
         rejected_count = await session.scalar(
-            select(func.count()).select_from(RecipeCandidate).where(
-                RecipeCandidate.status == RecipeCandidateStatus.rejected
-            )
+            select(func.count())
+            .select_from(RecipeCandidate)
+            .where(RecipeCandidate.status == RecipeCandidateStatus.rejected)
         )
 
         print(
@@ -96,8 +98,12 @@ async def main(*, domains: list[str] | None, query: str | None, limit: int | Non
 
     async with async_session() as session:
         for idx, source in enumerate(sources, start=1):
-            async def single_source_discovery_agent(seed_input: dict) -> list[DiscoverySourceOutput]:
-                return [source]
+
+            async def single_source_discovery_agent(
+                seed_input: dict,
+                source_item: DiscoverySourceOutput = source,
+            ) -> list[DiscoverySourceOutput]:
+                return [source_item]
 
             result = await run_source_discovery_pipeline(
                 session,

@@ -33,11 +33,7 @@ def _empty_steps() -> list[dict[str, Any]]:
 def _normalize_meal_type(value: str | None) -> set[str]:
     if not value:
         return set()
-    return {
-        chunk.strip().lower()
-        for chunk in value.replace(",", "/").split("/")
-        if chunk.strip()
-    }
+    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
 
 
 def _slot_compatible_types(slot_type: str) -> set[str]:
@@ -80,7 +76,9 @@ def _build_meal(recipe: dict[str, Any], slot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_day_plan(day_number: int, schedule: list[dict[str, Any]], recipes: list[dict[str, Any]]) -> dict:
+def _build_day_plan(
+    day_number: int, schedule: list[dict[str, Any]], recipes: list[dict[str, Any]]
+) -> dict:
     meals = [_build_meal(recipe, slot) for slot, recipe in zip(schedule, recipes, strict=False)]
     return {
         "day_number": day_number,
@@ -113,7 +111,9 @@ def _slot_candidates_summary(
     )
     chunks = []
     for slot, candidates in zip(schedule, candidate_lists, strict=False):
-        top = ", ".join(f"{recipe['title']} ({recipe['calories']:.0f})" for recipe in candidates[:3])
+        top = ", ".join(
+            f"{recipe['title']} ({recipe['calories']:.0f})" for recipe in candidates[:3]
+        )
         chunks.append(f"{slot['type']}[{len(candidates)}]: {top}")
     return " | ".join(chunks)
 
@@ -145,7 +145,9 @@ def _candidate_lists(
                 recipe["title"],
             ),
         )
-        all_candidates.append(ranked[:max_candidates_per_slot] if max_candidates_per_slot else ranked)
+        all_candidates.append(
+            ranked[:max_candidates_per_slot] if max_candidates_per_slot else ranked
+        )
     return all_candidates
 
 
@@ -198,7 +200,9 @@ def _day_deviation(day_plan: dict[str, Any], target_calories: int) -> float:
     return abs(float(day_plan["total_calories"]) - float(target_calories))
 
 
-def _diversity_penalty(combination: tuple[dict[str, Any], ...], recipe_penalties: dict[str, float]) -> float:
+def _diversity_penalty(
+    combination: tuple[dict[str, Any], ...], recipe_penalties: dict[str, float]
+) -> float:
     return sum(recipe_penalties.get(str(recipe["id"]), 0.0) for recipe in combination)
 
 
@@ -279,7 +283,9 @@ def _find_plan_combination(
     )
 
 
-async def _load_demo_recipes(session, user_profile: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+async def _load_demo_recipes(
+    session, user_profile: dict[str, Any]
+) -> tuple[list[dict[str, Any]], str]:
     from app.core.rag.retriever import search_recipes
 
     preferred_recipes = await search_recipes(
@@ -367,15 +373,16 @@ def _resolve_demo_target_calories(
 
 def _recipe_usage_penalties(generated_days: list[dict[str, Any]]) -> dict[str, float]:
     counts = Counter(
-        str(meal["recipe_id"])
-        for day in generated_days
-        for meal in day.get("meals", [])
+        str(meal["recipe_id"]) for day in generated_days for meal in day.get("meals", [])
     )
     return {recipe_id: count * 60.0 for recipe_id, count in counts.items()}
 
 
 def _auto_fix_replacement_order(schedule: list[dict[str, Any]]) -> list[str]:
-    return [slot["type"] for slot in sorted(schedule, key=lambda slot: slot["calories_pct"], reverse=True)]
+    return [
+        slot["type"]
+        for slot in sorted(schedule, key=lambda slot: slot["calories_pct"], reverse=True)
+    ]
 
 
 def _slot_candidates_by_type(
@@ -472,10 +479,13 @@ def _directed_auto_fix(
 
     for first_index, first_slot in enumerate(slot_order):
         for second_slot in slot_order[first_index + 1 :]:
-            first_alts = [alt for alt in slot_candidates.get(first_slot, [])[:6]]
-            second_alts = [alt for alt in slot_candidates.get(second_slot, [])[:6]]
+            first_alts = list(slot_candidates.get(first_slot, [])[:6])
+            second_alts = list(slot_candidates.get(second_slot, [])[:6])
             for first_alt, second_alt in product(first_alts, second_alts):
-                if first_alt["id"] == current_by_type[first_slot]["recipe_id"] and second_alt["id"] == current_by_type[second_slot]["recipe_id"]:
+                if (
+                    first_alt["id"] == current_by_type[first_slot]["recipe_id"]
+                    and second_alt["id"] == current_by_type[second_slot]["recipe_id"]
+                ):
                     continue
                 replacement = _build_replaced_day(
                     day_plan,
@@ -594,7 +604,9 @@ def _finish_task(task: DemoTaskState, status: str, error: str | None = None) -> 
 async def run_demo_pipeline(task: DemoTaskState) -> None:
     try:
         demo_warnings: list[str] = []
-        _set_step(task, "context", status="running", message="Собираем профиль и локальный каталог.")
+        _set_step(
+            task, "context", status="running", message="Собираем профиль и локальный каталог."
+        )
         async with async_session() as session:
             user_profile = await load_user_profile(session, task.user_id)
             recipes, recipe_mode_message = await _load_demo_recipes(session, user_profile)
@@ -624,9 +636,7 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
             user_profile["target_calories"] = target_calories
             task.quality_status = "partially_valid"
             demo_warnings.append(target_message)
-            context_message = next(
-                step for step in (task.steps or []) if step["key"] == "context"
-            )
+            context_message = next(step for step in (task.steps or []) if step["key"] == "context")
             context_message["message"] = f"{context_message['message']} {target_message}"
         logger.info(
             "Demo context ready: user_id={} source_target={} effective_target={} recipes={}",
@@ -755,7 +765,8 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
                     recipes,
                     schedule,
                     target_calories,
-                    blocked_signatures=blocked_signatures - {_plan_signature(generated_days[day_number - 1])},
+                    blocked_signatures=blocked_signatures
+                    - {_plan_signature(generated_days[day_number - 1])},
                 )
                 if candidate is not None:
                     logger.info(

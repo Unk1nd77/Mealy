@@ -135,7 +135,7 @@ def estimate_prep_time(recipe: dict) -> int:
         n_ingredients = len(recipe.get("ingredients", []))
         if n_ingredients <= 2:
             return 5
-        elif n_ingredients <= 3:
+        if n_ingredients <= 3:
             return 10
         return 15
 
@@ -164,7 +164,7 @@ def detect_category(recipe: dict) -> str:
 
 
 def enrich_recipes():
-    with open(DATA_PATH, encoding="utf-8") as f:
+    with DATA_PATH.open(encoding="utf-8") as f:
         recipes = json.load(f)
 
     for recipe in recipes:
@@ -174,7 +174,7 @@ def enrich_recipes():
         recipe["prep_time_min"] = estimate_prep_time(recipe)
         recipe["category"] = detect_category(recipe)
 
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
+    with DATA_PATH.open("w", encoding="utf-8") as f:
         json.dump(recipes, f, ensure_ascii=False, indent=2)
 
     print(f"Enriched {len(recipes)} recipes")

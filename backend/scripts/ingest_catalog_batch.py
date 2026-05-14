@@ -47,19 +47,19 @@ async def _print_db_summary() -> None:
         recipe_count = await session.execute(select(func.count()).select_from(Recipe))
         candidate_count = await session.execute(select(func.count()).select_from(RecipeCandidate))
         accepted_count = await session.execute(
-            select(func.count()).select_from(RecipeCandidate).where(
-                RecipeCandidate.status == RecipeCandidateStatus.accepted
-            )
+            select(func.count())
+            .select_from(RecipeCandidate)
+            .where(RecipeCandidate.status == RecipeCandidateStatus.accepted)
         )
         review_count = await session.execute(
-            select(func.count()).select_from(RecipeCandidate).where(
-                RecipeCandidate.status == RecipeCandidateStatus.review
-            )
+            select(func.count())
+            .select_from(RecipeCandidate)
+            .where(RecipeCandidate.status == RecipeCandidateStatus.review)
         )
         rejected_count = await session.execute(
-            select(func.count()).select_from(RecipeCandidate).where(
-                RecipeCandidate.status == RecipeCandidateStatus.rejected
-            )
+            select(func.count())
+            .select_from(RecipeCandidate)
+            .where(RecipeCandidate.status == RecipeCandidateStatus.rejected)
         )
 
         print(

@@ -21,13 +21,23 @@ _RECIPE_INGREDIENT_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _NUTRITION_RE = {
-    "calories": re.compile(r'itemProp="calories">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE),
-    "protein": re.compile(r'itemProp="proteinContent">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE),
+    "calories": re.compile(
+        r'itemProp="calories">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE
+    ),
+    "protein": re.compile(
+        r'itemProp="proteinContent">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE
+    ),
     "fat": re.compile(r'itemProp="fatContent">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE),
-    "carbs": re.compile(r'itemProp="carbohydrateContent">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE),
+    "carbs": re.compile(
+        r'itemProp="carbohydrateContent">\s*([0-9]+(?:[.,][0-9]+)?)\s*</span>', re.IGNORECASE
+    ),
 }
-_RECIPE_YIELD_RE = re.compile(r'itemProp="recipeYield"[^>]*>\s*<span>\s*([0-9]+)\s*</span>', re.IGNORECASE)
-_PREP_TIME_RE = re.compile(r"ГОТОВИТЬ:\s*</span><i[^>]*></i><div[^>]*>\s*([0-9]+)\s*минут", re.IGNORECASE)
+_RECIPE_YIELD_RE = re.compile(
+    r'itemProp="recipeYield"[^>]*>\s*<span>\s*([0-9]+)\s*</span>', re.IGNORECASE
+)
+_PREP_TIME_RE = re.compile(
+    r"ГОТОВИТЬ:\s*</span><i[^>]*></i><div[^>]*>\s*([0-9]+)\s*минут", re.IGNORECASE
+)
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 _AMOUNT_RE = re.compile(r"^\s*([0-9]+(?:[.,][0-9]+)?)\s*(.*?)\s*$")
@@ -96,7 +106,9 @@ def _extract_structured_recipe(html: str) -> dict[str, Any]:
         if not name or amount_unit is None:
             continue
         amount, unit = amount_unit
-        ingredients.append({"name": name, "amount": amount, "unit": unit, "amount_text": _clean_text(raw_amount)})
+        ingredients.append(
+            {"name": name, "amount": amount, "unit": unit, "amount_text": _clean_text(raw_amount)}
+        )
 
     nutrition: dict[str, float] = {}
     for key, pattern in _NUTRITION_RE.items():
@@ -149,7 +161,9 @@ def _build_html_snapshot(url: str, html: str) -> ResolvedCatalogSource:
 
 
 async def fetch_source_url(url: str) -> ResolvedCatalogSource:
-    async with httpx.AsyncClient(timeout=settings.CATALOG_SOURCE_FETCH_TIMEOUT_SEC, follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        timeout=settings.CATALOG_SOURCE_FETCH_TIMEOUT_SEC, follow_redirects=True
+    ) as client:
         response = await client.get(url)
         response.raise_for_status()
         content_type = response.headers.get("content-type", "").lower()
@@ -236,7 +250,9 @@ async def resolve_catalog_source(seed_input: dict[str, Any]) -> ResolvedCatalogS
         )
 
     if seed_input.get("raw_text"):
-        excerpt = _clean_text(str(seed_input["raw_text"]), limit=settings.CATALOG_SOURCE_TEXT_CHAR_LIMIT)
+        excerpt = _clean_text(
+            str(seed_input["raw_text"]), limit=settings.CATALOG_SOURCE_TEXT_CHAR_LIMIT
+        )
         provenance = {
             "resolver": "raw_text",
             **(seed_input.get("provenance") or {}),
