@@ -1,0 +1,80 @@
+.generation-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 168px;
+  height: 168px;
+  margin: 34px auto 12px;
+}
+
+.generation-orbit__ring {
+  position: absolute;
+  inset: 0;
+  content: "";
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+}
+
+.generation-orbit__ring--accent {
+  inset: 20px;
+  border-color: rgb(255 159 10 / 36%);
+}
+
+.generation-orbit__core {
+  width: 82px;
+  height: 82px;
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  background: var(--canvas-parchment);
+}
+
+.progress-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.progress-step {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+}
+
+.progress-step strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.progress-step p {
+  color: var(--body-muted);
+  font-size: 0.84rem;
+}
+
+.progress-step.is-active {
+  border-color: rgb(255 159 10 / 38%);
+  background: rgb(255 159 10 / 7%);
+}
+
+.progress-step__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  background: var(--canvas);
+}
+
+.progress-step__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.62;
+}
+
+.alert {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  margin-top: 18px;
+}

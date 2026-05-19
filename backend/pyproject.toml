@@ -1,7 +1,7 @@
 [project]
-name = "nutri-agent-backend"
+name = "mealy-backend"
 version = "0.1.0"
-description = "NutriAgent backend API and meal-plan orchestrator"
+description = "Mealy backend API and meal-plan orchestrator"
 readme = "../README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-nutri-cli = "cli:main"
+mealy-cli = "cli:main"
 
 # ── pytest ──────────────────────────────────────────
 [tool.pytest.ini_options]

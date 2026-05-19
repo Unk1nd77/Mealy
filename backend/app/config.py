@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     DEBUG: bool = False
 
+    DEV_MODE: bool = False
+    DEV_USER_EMAIL: str = "demo@mealy.local"
+    DEV_USER_PASSWORD: str = "demo123456"
+
     @property
     def database_url_sync(self) -> str:
         return self.DATABASE_URL.replace("+asyncpg", "")

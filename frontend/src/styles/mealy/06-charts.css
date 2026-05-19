@@ -1,0 +1,208 @@
+.pill--soft {
+  color: var(--ink);
+  background: rgb(255 255 255 / 64%);
+}
+
+.pill--outline {
+  color: var(--primary);
+  background: rgb(255 159 10 / 12%);
+  border: 1px solid rgb(255 159 10 / 22%);
+}
+
+.chip-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(112px, 1fr);
+  gap: 10px;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.day-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.day-chip span {
+  font-weight: 600;
+}
+
+.day-chip small {
+  color: var(--body-muted);
+  font-size: 0.75rem;
+}
+
+.day-chip.is-active {
+  border-color: var(--primary);
+  background: rgb(255 159 10 / 12%);
+}
+
+.macro-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.macro-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-pearl);
+}
+
+.macro-grid span {
+  color: var(--body-muted);
+  font-size: 0.76rem;
+}
+
+.meal-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.macro-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+}
+
+.macro-ring svg {
+  width: 120px;
+  height: 120px;
+  transform: rotate(-90deg);
+}
+
+.macro-ring__track,
+.macro-ring__segment {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.macro-ring__track {
+  stroke: var(--divider-soft);
+}
+
+.macro-ring__center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.macro-ring__center span {
+  color: var(--body-muted);
+  font-size: 0.76rem;
+}
+
+.macro-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.macro-legend__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.macro-legend__item span {
+  color: var(--body-muted);
+  font-size: 0.8rem;
+}
+
+.macro-legend__swatch {
+  width: 10px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+}
+
+.detail-block {
+  margin-top: 20px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ingredient-row,
+.shopping-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.ingredient-row div,
+.shopping-row div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ingredient-row strong,
+.shopping-row strong {
+  overflow-wrap: anywhere;
+}
+
+.ingredient-row span,
+.shopping-row span {
+  color: var(--body-muted);
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.profile-block {
+  padding: 16px;
+}
+
+.profile-block h3 {
+  margin-bottom: 14px;
+}
+
+.loading-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 18px;
+  text-align: center;
+}
+
+.empty-state--compact {
+  margin-top: 18px;
+}

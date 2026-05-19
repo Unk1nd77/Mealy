@@ -2295,7 +2295,7 @@ wheels = [
 ]
 
 [[package]]
-name = "nutri-agent-backend"
+name = "mealy-backend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

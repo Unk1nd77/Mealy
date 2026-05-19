@@ -1,0 +1,235 @@
+:root {
+  --primary: #ff9f0a;
+  --primary-focus: #f58a00;
+  --primary-on-dark: #ffd60a;
+  --system-blue: #0066cc;
+  --ink: #1d1d1f;
+  --body: #1d1d1f;
+  --body-muted: #6e6e73;
+  --ink-muted-80: #333333;
+  --ink-muted-48: #7a7a7a;
+  --divider-soft: #f0f0f0;
+  --hairline: #e0e0e0;
+  --canvas: #ffffff;
+  --canvas-parchment: #f5f5f7;
+  --surface-pearl: #ffffff;
+  --surface-tile-1: #fff7eb;
+  --surface-tile-2: #fff2dc;
+  --surface-tile-3: #f4f4f6;
+  --surface-strong: #fffaf2;
+  --chip: #d2d2d7;
+  --success: #30d158;
+  --danger: #ff453a;
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+  --container: 920px;
+  --safe-bottom: calc(14px + env(safe-area-inset-bottom));
+  --safe-top: calc(16px + env(safe-area-inset-top));
+  --bottom-nav-height: calc(66px + env(safe-area-inset-bottom));
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--body);
+  background: var(--canvas-parchment);
+  font-family:
+    "SF Pro Text", "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: inherit;
+  font-family: "SF Pro Display", "SF Pro Text", system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  line-height: 1.07;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2.15rem);
+  line-height: 1.12;
+}
+
+h3 {
+  font-size: 1.02rem;
+  line-height: 1.2;
+}
+
+p,
+span,
+strong,
+small,
+button,
+input,
+select,
+textarea {
+  letter-spacing: 0;
+}
+
+.app-shell {
+  min-height: 100svh;
+  background: var(--canvas-parchment);
+}
+
+.phone-shell {
+  position: relative;
+  width: 100%;
+  min-height: 100svh;
+  margin: 0 auto;
+}
+
+.screen-card {
+  width: min(100%, var(--container));
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: var(--safe-top) clamp(17px, 4vw, 48px) calc(var(--safe-bottom) + 78px);
+  background: var(--canvas);
+  animation: screen-enter 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.phone-shell.has-bottom-nav .screen-card {
+  height: calc(100svh - var(--bottom-nav-height));
+  min-height: calc(100svh - var(--bottom-nav-height));
+  overflow-y: auto;
+  padding-bottom: var(--safe-bottom);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.screen-card--home,
+.screen-card--integrations {
+  padding-top: 0;
+}
+
+.screen-card--onboarding,
+.screen-card--generation {
+  display: flex;
+  flex-direction: column;
+}
+
+.screen-card--detail {
+  padding-bottom: calc(var(--safe-bottom) + 110px);
+}
+
+.floating-notice {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top));
+  right: calc(18px + env(safe-area-inset-right));
+  z-index: 30;
+  display: flex;
+  width: min(calc(100% - 36px), 360px);
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 16px 42px rgb(29 29 31 / 12%);
+  backdrop-filter: blur(18px);
+  animation: notice-enter 260ms ease both;
+}
+
+.floating-notice strong {
+  font-size: 0.84rem;
+}
+
+.floating-notice span {
+  color: var(--body-muted);
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
+.floating-notice.is-error {
+  border-color: rgb(255 69 58 / 72%);
+  color: #fff;
+  background: #d92d20;
+  box-shadow: 0 18px 44px rgb(217 45 32 / 26%);
+}
+
+.floating-notice.is-error span {
+  color: rgb(255 255 255 / 82%);
+}
+
+@media (max-width: 620px) {
+  h1 {
+    font-size: clamp(2rem, 11vw, 2.65rem);
+    line-height: 1.02;
+  }
+
+  .floating-notice {
+    top: auto;
+    right: 14px;
+    bottom: calc(var(--bottom-nav-height) + 10px);
+    width: min(calc(100% - 28px), 320px);
+    padding: 11px 13px;
+    border-radius: 14px;
+  }
+
+  .floating-notice strong,
+  .floating-notice span {
+    font-size: 0.82rem;
+  }
+
+  .phone-shell:not(.has-bottom-nav) .floating-notice {
+    bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+.icon-button,
+.empty-state__icon,
+.progress-step__icon,
+.action-card__icon,
+.meal-card__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}

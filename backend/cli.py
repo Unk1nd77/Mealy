@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CLI для NutriAgent — работает без внешнего LLM API.
+CLI для Mealy — работает без внешнего LLM API.
 
 Команды:
   context   — подготовить контекст (профиль + рецепты + промпт) для агента
@@ -117,7 +117,7 @@ def cmd_shopping(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="NutriAgent CLI")
+    parser = argparse.ArgumentParser(description="Mealy CLI")
     sub = parser.add_subparsers(dest="command")
 
     p_ctx = sub.add_parser("context", help="Prepare context for agent")

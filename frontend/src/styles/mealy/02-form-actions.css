@@ -1,0 +1,53 @@
+.sticky-actions,
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  gap: 12px;
+  padding: 12px 0 0;
+  background: var(--canvas);
+}
+
+.sticky-actions {
+  justify-content: space-between;
+}
+
+.sticky-actions--single {
+  justify-content: flex-end;
+}
+
+.screen-card--onboarding .sticky-actions .button--ghost {
+  flex: 0 0 auto;
+}
+
+.screen-card--onboarding .sticky-actions .button--primary {
+  flex: 0 1 260px;
+  color: #fff;
+  background: #f29a22;
+}
+
+.screen-card--onboarding .sticky-actions .button--primary:not(:disabled):hover {
+  background: #e88c12;
+}
+
+.screen-card--onboarding .sticky-actions .button--primary:not(:disabled):active {
+  background: #de8209;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}

@@ -1,0 +1,46 @@
+@media (min-width: 1040px) {
+  .quick-actions,
+  .integration-list,
+  .shopping-list,
+  .ingredient-list,
+  .observability-steps,
+  .observability-days {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .meal-card {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+  }
+
+  .meal-card__body {
+    flex: 1;
+  }
+
+  .action-card,
+  .integration-action {
+    align-content: center;
+    min-height: 112px;
+    padding: 18px;
+  }
+
+  .screen-card--integrations {
+    display: grid;
+    grid-template-columns: minmax(0, 0.84fr) minmax(420px, 1.16fr);
+    grid-template-rows: auto 1fr auto;
+    gap: 24px;
+    align-content: start;
+  }
+
+  .screen-card--integrations .screen-header {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  .screen-card--integrations .disclaimer-banner {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+}

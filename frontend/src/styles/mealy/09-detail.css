@@ -1,0 +1,95 @@
+@media (max-width: 760px) {
+  .screen-card {
+    width: 100%;
+    padding-inline: 17px;
+  }
+
+  .screen-card--home,
+  .screen-card--integrations {
+    padding-top: 0;
+  }
+
+  .home-hero {
+    grid-template-columns: 1fr;
+    margin-inline: -17px;
+    padding-inline: 17px;
+  }
+
+  .home-hero__top h1 {
+    max-width: none;
+  }
+
+  .field-grid,
+  .meal-control-grid,
+  .review-card,
+  .day-summary,
+  .chart-card--macro {
+    grid-template-columns: 1fr;
+  }
+
+  .macro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chart-target {
+    align-items: flex-start;
+  }
+
+  .chart-card--macro {
+    justify-items: center;
+  }
+
+  .macro-legend {
+    width: 100%;
+  }
+
+  .section-heading,
+  .section-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .sticky-actions {
+    flex-direction: column;
+  }
+
+  .button--ghost,
+  .button--primary {
+    width: 100%;
+  }
+
+  .sticky-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .integration-summary {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .integration-summary__metric {
+    width: 100%;
+    height: auto;
+    min-height: 74px;
+  }
+}
+
+@media (max-width: 390px) {
+  h1 {
+    font-size: 2.1rem;
+  }
+
+  .hero-stats,
+  .macro-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav__item span {
+    font-size: 0.68rem;
+  }
+}

@@ -1,0 +1,95 @@
+.button:disabled {
+  opacity: 0.48;
+}
+
+.button--primary {
+  flex: 1 1 auto;
+  color: var(--canvas);
+  background: var(--primary);
+}
+
+.button--primary:not(:disabled):hover {
+  background: var(--primary-focus);
+}
+
+.button--ghost {
+  color: var(--primary);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+}
+
+.button--small {
+  min-height: 40px;
+  padding-inline: 14px;
+  font-size: 0.84rem;
+}
+
+.quick-actions,
+.meal-stack,
+.shopping-list,
+.ingredient-list,
+.observability-steps,
+.observability-days,
+.integration-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.screen-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.screen-header__lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.screen-header__lead > div {
+  min-width: 0;
+}
+
+.screen-header h2 {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .screen-header {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .screen-header__copy {
+    max-width: 26ch;
+    font-size: 0.98rem;
+    line-height: 1.42;
+  }
+}
+
+.icon-button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+}
+
+.icon--brand {
+  color: var(--primary);
+}
+
+.icon--large {
+  width: 24px;
+  height: 24px;
+}

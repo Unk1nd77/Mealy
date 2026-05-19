@@ -14,7 +14,7 @@ from app.config import settings
 from app.core import cache
 from app.core.relational_store import load_user_profile_from_rows, sync_user_normalized
 from app.core.skills.calculator import calculate_target_calories
-from app.db.models import DEFAULT_MEAL_SCHEDULE, User
+from app.db.models import DEFAULT_MEAL_SCHEDULE, ActivityLevel, Gender, Goal, User
 from app.db.session import get_db
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -52,11 +52,57 @@ async def _authenticate_user(email: str, password: str, db: AsyncSession) -> Use
     return user
 
 
+async def _get_or_create_dev_user(db: AsyncSession) -> User:
+    """Возвращает demo-юзера для DEV_MODE, создавая его при необходимости."""
+    result = await db.execute(select(User).where(User.email == settings.DEV_USER_EMAIL))
+    user = result.scalar_one_or_none()
+    if user is not None:
+        return user
+
+    target_calories = calculate_target_calories(
+        weight_kg=72.0,
+        height_cm=176.0,
+        age=29,
+        gender=Gender.male,
+        activity_level=ActivityLevel.moderate,
+        goal=Goal.maintain,
+    )
+    user = User(
+        email=settings.DEV_USER_EMAIL,
+        password_hash=_bcrypt.hashpw(
+            settings.DEV_USER_PASSWORD.encode(), _bcrypt.gensalt()
+        ).decode(),
+        age=29,
+        weight_kg=72.0,
+        height_cm=176.0,
+        gender=Gender.male,
+        activity_level=ActivityLevel.moderate,
+        goal=Goal.maintain,
+        target_calories=target_calories,
+    )
+    db.add(user)
+    await sync_user_normalized(
+        db,
+        user,
+        allergies=[],
+        preferences=[],
+        disliked_ingredients=[],
+        diseases=[],
+        meal_schedule=DEFAULT_MEAL_SCHEDULE,
+    )
+    await db.commit()
+    await db.refresh(user)
+    logger.warning("DEV_MODE: auto-created demo user {}", user.email)
+    return user
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     if credentials is None:
+        if settings.DEV_MODE:
+            return await _get_or_create_dev_user(db)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
@@ -100,7 +146,13 @@ async def _issue_auth_response(db: AsyncSession, user: User) -> AuthResponse:
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == data.email))
-    if existing.scalar_one_or_none():
+    existing_user = existing.scalar_one_or_none()
+    if existing_user:
+        if settings.DEV_MODE:
+            logger.warning(
+                "DEV_MODE: /register treats existing email {} as login", data.email
+            )
+            return await _issue_auth_response(db, existing_user)
         raise HTTPException(status_code=409, detail="Email already registered")
 
     target_calories = calculate_target_calories(

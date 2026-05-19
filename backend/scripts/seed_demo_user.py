@@ -26,8 +26,8 @@ from app.db.session import async_session
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create or refresh NutriAgent demo user")
-    parser.add_argument("--email", default="demo@nutriagent.local")
+    parser = argparse.ArgumentParser(description="Create or refresh Mealy demo user")
+    parser.add_argument("--email", default="demo@mealy.local")
     parser.add_argument("--password", default="demo123456")
     parser.add_argument("--age", type=int, default=29)
     parser.add_argument("--weight-kg", type=float, default=72.0)

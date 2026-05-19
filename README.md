@@ -141,6 +141,14 @@ npm run dev
 http://127.0.0.1:4321
 ```
 
+Dev-режим без экранов регистрации:
+
+```bash
+PUBLIC_DEV_SKIP_ONBOARDING=true npm run dev
+```
+
+При таком запуске Mealy автоматически создаёт или открывает demo-профиль и сразу показывает Today. Если нужно сразу запускать генерацию плана, добавь `PUBLIC_DEV_AUTO_GENERATE_PLAN=true`.
+
 ---
 
 ## Лицензия

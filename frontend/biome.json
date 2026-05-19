@@ -9,6 +9,7 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**/*.astro",
+      "src/**/*.ts",
       "src/**/*.tsx",
       "src/**/*.css",
       "package.json",

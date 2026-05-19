@@ -1,0 +1,125 @@
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.button,
+.secondary-cta,
+.mini-link,
+.icon-button,
+.language-toggle,
+.language-toggle span,
+.mode-chip,
+.action-card,
+.integration-action,
+.meal-card,
+.next-meal,
+.rhythm-row,
+.day-chip,
+.week-day-card,
+.week-meal-row {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 220ms ease,
+    transform 180ms ease;
+}
+
+.mode-switch {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+
+.step-dot {
+  transition: background-color 260ms ease;
+}
+
+.button:not(:disabled):hover,
+.secondary-cta:not(:disabled):hover,
+.action-card:not(:disabled):hover,
+.integration-action:not(:disabled):hover,
+.meal-card:not(:disabled):hover,
+.next-meal:not(:disabled):hover,
+.rhythm-row:not(:disabled):hover,
+.day-chip:not(:disabled):hover,
+.week-day-card:not(:disabled):hover,
+.week-meal-row:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgb(29 29 31 / 7%);
+}
+
+.button:not(:disabled):active,
+.secondary-cta:not(:disabled):active,
+.action-card:not(:disabled):active,
+.integration-action:not(:disabled):active,
+.meal-card:not(:disabled):active,
+.next-meal:not(:disabled):active,
+.rhythm-row:not(:disabled):active,
+.day-chip:not(:disabled):active,
+.week-day-card:not(:disabled):active,
+.week-meal-row:not(:disabled):active {
+  transform: translateY(0) scale(0.99);
+}
+
+.progress-bar span,
+.weekly-chart__bar,
+.macro-ring__segment {
+  transition:
+    width 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    fill 220ms ease,
+    stroke-dashoffset 420ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-card,
+  .floating-notice,
+  .button,
+  .secondary-cta,
+  .mini-link,
+  .icon-button,
+  .language-toggle,
+  .language-toggle span,
+  .mode-chip,
+  .action-card,
+  .integration-action,
+  .meal-card,
+  .next-meal,
+  .rhythm-row,
+  .day-chip,
+  .week-day-card,
+  .week-meal-row,
+  .bottom-nav__item,
+  .progress-bar span,
+  .boot-spinner,
+  .weekly-chart__bar,
+  .macro-ring__segment {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}

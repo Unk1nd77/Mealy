@@ -1,0 +1,84 @@
+@media (max-width: 760px) {
+  .empty-home-panel,
+  .screen-card--profile .profile-blocks,
+  .profile-restriction-grid,
+  .profile-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-home-panel {
+    gap: 16px;
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .empty-home-panel h2 {
+    max-width: 16ch;
+    margin-block: 6px 8px;
+    font-size: clamp(1.65rem, 7.5vw, 2rem);
+    line-height: 1.04;
+  }
+
+  .empty-home-panel .empty-state__icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .empty-home-preview {
+    gap: 0;
+  }
+
+  .empty-home-preview div {
+    display: none;
+  }
+
+  .screen-card--profile .profile-blocks {
+    gap: 22px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .profile-block__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .profile-actions .button--primary {
+    flex: 1 1 auto;
+  }
+
+  .screen-card--profile .profile-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .screen-card--profile .profile-metric-grid .field {
+    gap: 5px;
+    padding: 9px 10px;
+    border-radius: 15px;
+  }
+
+  .screen-card--profile .profile-metric-grid input,
+  .screen-card--profile .profile-metric-grid select {
+    min-height: 30px;
+    font-size: 1.18rem;
+  }
+
+  .screen-card--profile .profile-metric-grid select {
+    font-size: 0.98rem;
+  }
+
+  .screen-card--profile .field textarea {
+    min-height: 58px;
+  }
+
+  .empty-home-panel__main {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-home-preview .button {
+    width: 100%;
+  }
+}

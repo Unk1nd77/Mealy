@@ -36,7 +36,7 @@ SHOPPING_LIST_CACHE_TTL = 1800
 PLAN_RESPONSE_CACHE_VERSION = "v1"
 SHOPPING_LIST_CACHE_VERSION = "v1"
 
-PDF_FONT_NAME = "NutriAgentShoppingFont"
+PDF_FONT_NAME = "MealyShoppingFont"
 PDF_FONT_CANDIDATES = (
     Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
     Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
@@ -235,9 +235,9 @@ def _build_shopping_list_pdf(plan_id: uuid.UUID, shopping_list: list[dict]) -> b
     top = height - 56
     line_height = 18
 
-    pdf.setTitle(f"NutriAgent shopping list {plan_id}")
+    pdf.setTitle(f"Mealy shopping list {plan_id}")
     pdf.setFont(font_name, 16)
-    pdf.drawString(margin_x, top, "NutriAgent Shopping List")
+    pdf.drawString(margin_x, top, "Mealy Shopping List")
 
     pdf.setFont(font_name, 10)
     pdf.drawString(margin_x, top - 18, f"Plan ID: {plan_id}")
@@ -429,7 +429,7 @@ async def export_shopping_list_pdf(plan_id: uuid.UUID, db: AsyncSession = Depend
         content=pdf_content,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="nutriagent-shopping-list-{plan_id}.pdf"'
+            "Content-Disposition": f'attachment; filename="mealy-shopping-list-{plan_id}.pdf"'
         },
     )
 
@@ -458,7 +458,7 @@ async def export_calendar(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     return Response(
         content=ics_content,
         media_type="text/calendar",
-        headers={"Content-Disposition": f'attachment; filename="nutriagent-plan-{plan_id}.ics"'},
+        headers={"Content-Disposition": f'attachment; filename="mealy-plan-{plan_id}.ics"'},
     )
 
 

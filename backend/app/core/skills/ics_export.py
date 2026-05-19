@@ -49,10 +49,10 @@ def generate_ics(plan_data: dict, plan_id: str, start_date: date | None = None) 
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//NutriAgent//MealPlan//RU",
+        "PRODID:-//Mealy//MealPlan//RU",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        "X-WR-CALNAME:NutriAgent — План питания",
+        "X-WR-CALNAME:Mealy — План питания",
     ]
 
     for day in plan_data.get("days", []):
@@ -94,7 +94,7 @@ def generate_ics(plan_data: dict, plan_id: str, start_date: date | None = None) 
                 desc_parts.append(f"Состав: {ing_text}")
 
             description = _escape_ics("\\n".join(desc_parts))
-            uid = f"{plan_id}-d{day_number}-{meal_type}@nutriagent"
+            uid = f"{plan_id}-d{day_number}-{meal_type}@mealy"
 
             lines.extend(
                 [

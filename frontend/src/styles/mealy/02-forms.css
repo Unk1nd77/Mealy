@@ -1,0 +1,233 @@
+.eyebrow,
+.section-copy__eyebrow,
+.section-heading__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--body-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.screen-header__brand {
+  color: var(--body-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.eyebrow--light {
+  color: rgb(255 255 255 / 72%);
+}
+
+.soft-copy,
+.screen-header__copy,
+.section-copy p,
+.disclaimer-banner p,
+.empty-state p,
+.alert p {
+  color: var(--body-muted);
+  line-height: 1.5;
+}
+
+.screen-card--onboarding {
+  width: min(100%, 1120px);
+  gap: 22px;
+  padding-top: clamp(22px, 4vw, 42px);
+}
+
+.onboarding-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 18px;
+  align-items: center;
+  width: min(100%, 960px);
+  margin-inline: auto;
+}
+
+.onboarding-brand {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.onboarding-brand strong {
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.onboarding-brand span {
+  color: var(--body-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.onboarding-workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 40px);
+  align-items: start;
+  width: min(100%, 960px);
+  margin: 0 auto;
+}
+
+.onboarding-rail {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 28px;
+  padding: 26px 0;
+}
+
+.onboarding-rail h1 {
+  max-width: 10ch;
+  margin-top: 10px;
+  font-size: clamp(2rem, 3.5vw, 3.15rem);
+  line-height: 0.98;
+}
+
+.onboarding-rail p {
+  max-width: 28ch;
+  margin-top: 16px;
+  color: var(--body-muted);
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.onboarding-panel {
+  gap: 18px;
+  width: 100%;
+  margin: 0;
+  padding: clamp(22px, 3.5vw, 32px);
+  border: 1px solid rgb(210 210 215 / 74%);
+  border-radius: var(--radius-lg);
+  background: var(--surface-pearl);
+  box-shadow: 0 18px 54px rgb(29 29 31 / 6%);
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 3px;
+  border: 1px solid rgb(210 210 215 / 82%);
+  border-radius: var(--radius-pill);
+  background: rgb(245 245 247 / 76%);
+}
+
+.mode-chip {
+  min-height: 42px;
+  border-radius: var(--radius-pill);
+  color: var(--ink-muted-48);
+  font-weight: 580;
+}
+
+.mode-chip:not(.is-active):hover {
+  color: var(--ink);
+  background: rgb(255 255 255 / 52%);
+}
+
+.mode-chip.is-active {
+  color: var(--ink);
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 1px 3px rgb(29 29 31 / 6%);
+}
+
+.step-track {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.step-dot {
+  flex: 1 1 0;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: #e5e5e7;
+}
+
+.step-dot.is-active {
+  background: var(--primary);
+}
+
+.form-shell,
+.profile-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(100%, 760px);
+  margin-top: 22px;
+  margin-inline: auto;
+}
+
+.form-shell.onboarding-panel {
+  margin-top: 0;
+}
+
+.onboarding-panel .section-copy {
+  gap: 6px;
+}
+
+.onboarding-panel .section-copy h2 {
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+}
+
+.section-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-copy--centered {
+  align-items: center;
+  text-align: center;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field span {
+  color: var(--body-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  background: rgb(245 245 247 / 72%);
+}
+
+.field textarea {
+  min-height: 96px;
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--primary-focus);
+  outline: 3px solid rgb(255 159 10 / 18%);
+}

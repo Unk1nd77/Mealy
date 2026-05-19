@@ -1,0 +1,140 @@
+@media (max-width: 980px) {
+  .week-calendar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .week-day-card {
+    min-height: 172px;
+  }
+
+  .week-selected-day {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .screen-card--week .week-toolbar {
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: calc(100vw - 112px);
+    margin-top: 4px;
+    margin-right: auto;
+    margin-left: 0;
+  }
+
+  .screen-card--week .toolbar-actions {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .screen-card--week .mini-link {
+    font-size: 0.8rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .screen-card--week .week-action {
+    min-height: 34px;
+    padding-inline: 11px;
+  }
+
+  .week-toolbar__optional {
+    display: none;
+  }
+
+  .week-calendar {
+    grid-auto-columns: minmax(132px, 154px);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    gap: 8px;
+    margin-top: 12px;
+    padding-right: 34px;
+    padding-bottom: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
+  }
+
+  .week-calendar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .week-day-card {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 8px 12px;
+    padding: 13px;
+    border-radius: 18px;
+    scroll-snap-align: start;
+  }
+
+  .week-day-card__energy {
+    justify-content: flex-start;
+    font-size: 1.3rem;
+  }
+
+  .week-day-card__delta {
+    text-align: left;
+  }
+
+  .week-day-card__meals {
+    grid-template-columns: 1fr;
+  }
+
+  .week-selected-day {
+    gap: 12px;
+    margin-top: 2px;
+    padding: 13px;
+    border-radius: 20px;
+  }
+
+  .week-selected-day__summary {
+    gap: 10px;
+  }
+
+  .week-selected-day__summary h3 {
+    font-size: 1.45rem;
+    line-height: 1.05;
+  }
+
+  .week-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .week-metrics div {
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .week-metrics strong {
+    font-size: 0.98rem;
+  }
+
+  .week-meal-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 50px;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .week-meal-row .meal-dot {
+    display: none;
+  }
+
+  .week-meal-row__energy {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .week-day-card__meals {
+    grid-template-columns: 1fr;
+  }
+
+  .week-meal-row__energy {
+    white-space: nowrap;
+  }
+}

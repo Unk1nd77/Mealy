@@ -9,6 +9,7 @@ from app.api.routes.catalog import router as catalog_router
 from app.api.routes.plans import router as plans_router
 from app.api.routes.recipes import router as recipes_router
 from app.api.routes.users import router as users_router
+from app.config import settings
 from app.core import cache
 from app.logging import setup_logging
 
@@ -16,28 +17,42 @@ from app.logging import setup_logging
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
-    logger.info("NutriAgent backend starting")
+    logger.info("Mealy backend starting")
+    if settings.DEV_MODE:
+        logger.warning(
+            "⚠ DEV_MODE enabled — auth bypassed, CORS=*, register is idempotent. "
+            "DO NOT use in production."
+        )
+        logger.warning(
+            "DEV_MODE: requests without bearer token auto-login as {}",
+            settings.DEV_USER_EMAIL,
+        )
     yield
     await cache.close()
-    logger.info("NutriAgent backend shutting down")
+    logger.info("Mealy backend shutting down")
 
 
 app = FastAPI(
-    title="NutriAgent API",
+    title="Mealy API",
     description="AI-powered personalized meal planning with verified KBJU",
     version="0.1.0",
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+_cors_origins = (
+    ["*"]
+    if settings.DEV_MODE
+    else [
         "http://localhost:4321",
         "http://127.0.0.1:4321",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-    ],
-    allow_credentials=True,
+    ]
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=not settings.DEV_MODE,
     allow_methods=["*"],
     allow_headers=["*"],
 )

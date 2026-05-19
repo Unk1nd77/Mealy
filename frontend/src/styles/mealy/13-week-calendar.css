@@ -1,0 +1,222 @@
+.screen-card--week {
+  width: min(100%, 1120px);
+}
+
+.screen-card--week .week-toolbar {
+  width: min(100%, 980px);
+  margin-inline: auto;
+}
+
+.screen-card--week .week-toolbar {
+  justify-content: flex-end;
+}
+
+.week-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 13px;
+  border-radius: var(--radius-pill);
+  font-size: 0.86rem;
+  line-height: 1;
+}
+
+.week-action--primary {
+  color: #fff;
+  background: var(--primary);
+  box-shadow: 0 10px 24px rgb(255 159 10 / 18%);
+}
+
+.week-action--secondary {
+  color: var(--primary-focus);
+  border: 1px solid rgb(255 159 10 / 22%);
+  background: rgb(255 159 10 / 9%);
+}
+
+.week-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  width: min(100%, 980px);
+  margin: 18px auto 16px;
+}
+
+.week-day-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 202px;
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  color: var(--ink);
+  text-align: left;
+  background: linear-gradient(180deg, rgb(255 255 255 / 100%), rgb(250 250 252 / 82%));
+}
+
+.week-day-card.is-active {
+  border-color: rgb(255 159 10 / 46%);
+  background:
+    radial-gradient(circle at 78% 0%, rgb(255 214 10 / 22%), transparent 42%),
+    linear-gradient(180deg, #fffaf2 0%, #ffffff 74%);
+  box-shadow: 0 18px 42px rgb(255 159 10 / 13%);
+}
+
+.week-day-card__date {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.week-day-card__date strong {
+  font-size: 0.96rem;
+  line-height: 1.05;
+}
+
+.week-day-card__date small,
+.week-day-card__energy small,
+.week-day-card__delta,
+.week-day-card__meals {
+  color: var(--body-muted);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.week-day-card__energy {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 1.55rem;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.week-day-card__meals {
+  display: grid;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.week-day-card__meals span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.meal-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.meal-dot--breakfast {
+  background: var(--primary);
+}
+
+.meal-dot--lunch {
+  background: var(--success);
+}
+
+.meal-dot--dinner {
+  background: #ff2d55;
+}
+
+.meal-dot--snack,
+.meal-dot--second_snack {
+  background: var(--system-blue);
+}
+
+.week-selected-day {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.35fr) minmax(0, 0.65fr);
+  gap: 14px;
+  width: min(100%, 980px);
+  margin: 0 auto 18px;
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 24px;
+  background: var(--surface-pearl);
+}
+
+.week-selected-day__summary {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.week-selected-day__summary h3 {
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  line-height: 1;
+}
+
+.week-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.week-metrics div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgb(224 224 224 / 78%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 72%);
+}
+
+.week-metrics strong {
+  overflow-wrap: anywhere;
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+
+.week-metrics span {
+  color: var(--body-muted);
+  font-size: 0.74rem;
+}
+
+.week-meal-agenda {
+  display: grid;
+  gap: 8px;
+}
+
+.week-meal-row {
+  display: grid;
+  grid-template-columns: 58px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgb(224 224 224 / 78%);
+  border-radius: 17px;
+  color: var(--ink);
+  text-align: left;
+  background: rgb(255 255 255 / 78%);
+}
+
+.week-meal-row__time,
+.week-meal-row__energy,
+.week-meal-row__main small {
+  color: var(--body-muted);
+  font-size: 0.78rem;
+}
+
+.week-meal-row__main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.week-meal-row__main strong {
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.week-meal-row__energy {
+  white-space: nowrap;
+}
