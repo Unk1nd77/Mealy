@@ -1,5 +1,4 @@
 import { APP_NAME } from "../config"
-import { isMockPlanId } from "../mockPlan"
 import { buildPlanSummaryText, formatShoppingItems } from "../planText"
 import { copyText } from "./commandUtils"
 import type { MealyCore } from "./useMealyCommands"
@@ -76,10 +75,6 @@ export function createPlanUtilityCommands(core: MealyCore) {
 
   function openCalendarExport() {
     if (!core.planRecord?.id) return
-    if (isMockPlanId(core.planRecord.id)) {
-      core.patch({ globalNotice: "Mock mode: calendar export needs a backend plan." })
-      return
-    }
     void downloadProtectedFile(
       `/api/plans/${core.planRecord.id}/calendar.ics`,
       `mealy-plan-${core.planRecord.id}.ics`,
@@ -90,10 +85,6 @@ export function createPlanUtilityCommands(core: MealyCore) {
 
   function openShoppingListPdf() {
     if (!core.planRecord?.id) return
-    if (isMockPlanId(core.planRecord.id)) {
-      core.patch({ globalNotice: "Mock mode: PDF export needs a backend plan." })
-      return
-    }
     void downloadProtectedFile(
       `/api/plans/${core.planRecord.id}/shopping-list.pdf`,
       `mealy-shopping-list-${core.planRecord.id}.pdf`,

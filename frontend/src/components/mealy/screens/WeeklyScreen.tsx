@@ -7,7 +7,6 @@ import { EmptyHomeScreen } from "./EmptyHomeScreen";
 
 type WeeklyCore = Pick<
   MealyCore,
-  | "bootstrapDevSession"
   | "clearAppState"
   | "dailyTarget"
   | "patch"

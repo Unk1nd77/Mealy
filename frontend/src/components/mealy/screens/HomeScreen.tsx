@@ -14,7 +14,6 @@ import { EmptyHomeScreen } from "./EmptyHomeScreen";
 
 type HomeCore = Pick<
   MealyCore,
-  | "bootstrapDevSession"
   | "clearAppState"
   | "dailyTarget"
   | "observability"

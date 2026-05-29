@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 
-import { DEV_SKIP_ONBOARDING, DEV_USE_MOCK_DATA, emptyOnboardingForm } from "../config"
+import { emptyOnboardingForm } from "../config"
 import { clearStoredSession, readStoredSession } from "../session"
 import { joinList } from "../utils"
 import type { MealyCore } from "./useMealyCommands"
@@ -43,21 +43,8 @@ export function useMealyLifecycle(core: MealyCore) {
 
   useEffect(() => {
     async function restoreSession() {
-      if (DEV_USE_MOCK_DATA) {
-        clearStoredSession()
-        await core.loadMockPlan("Dev mode: mock week loaded.")
-        core.patch({ isBooting: false })
-        return
-      }
-
       const stored = readStoredSession()
       if (!stored?.userId && !stored?.planId && !stored?.taskId) {
-        if (DEV_SKIP_ONBOARDING) {
-          await core.bootstrapDevSession().catch((error: Error) => {
-            core.patch({ errorNotice: error.message })
-            core.resetToScreen({ name: "home" })
-          })
-        }
         core.patch({ isBooting: false })
         return
       }
@@ -92,14 +79,7 @@ export function useMealyLifecycle(core: MealyCore) {
           shoppingList: null,
           user: null,
         })
-        if (DEV_SKIP_ONBOARDING) {
-          await core.bootstrapDevSession().catch((error: Error) => {
-            core.patch({ errorNotice: error.message })
-            core.resetToScreen({ name: "home" })
-          })
-        } else {
-          core.resetToScreen({ name: "onboarding" })
-        }
+        core.resetToScreen({ name: "onboarding" })
       }
       core.patch({ isBooting: false })
     }

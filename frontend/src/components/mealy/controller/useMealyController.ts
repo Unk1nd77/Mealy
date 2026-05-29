@@ -1,15 +1,11 @@
 import { useReducer, useRef } from "react";
 
 import { useI18n } from "../i18n";
-import { DEV_AUTO_GENERATE_PLAN, buildDevUserBody } from "../config";
-import { createMealyClient, formToUserPayload } from "../client";
+import { createMealyClient } from "../client";
 import { normalizeObservabilityStep, normalizeTaskStatus } from "../api";
-import { getTodayIndex } from "../formatters";
-import { isMockPlanId } from "../mockPlan";
 import {
   clearStoredSession,
   patchStoredSession,
-  writeStoredSession,
 } from "../session";
 import type {
   MealContext,
@@ -19,7 +15,6 @@ import type {
   WeeklyPlan,
 } from "../types";
 import { sleep } from "../utils";
-import { registerOrCreateUser } from "./authFlow";
 import { deriveMealyState } from "./derivedState";
 import { mealyReducer, initialMealyState } from "./state";
 import { observabilityFromTask } from "./taskObservability";
@@ -97,35 +92,6 @@ export function useMealyController() {
     );
     if (aliveRef.current) patch({ recipesMap });
   }
-  async function loadMockPlan(globalNotice = "Dev mock week loaded.") {
-    if (!import.meta.env.DEV) {
-      patch({
-        errorNotice: "Mock data is only available in development mode.",
-      });
-      return;
-    }
-    const { buildDevMockState } = await import("../devMockData");
-    const mock = buildDevMockState();
-    if (!aliveRef.current) return;
-    patch({
-      accessToken: null,
-      errorNotice: "",
-      generationError: "",
-      generationStatus: "READY",
-      globalNotice,
-      observability: mock.observability,
-      observabilityLoading: false,
-      planRecord: mock.planRecord,
-      recipesMap: mock.recipesMap,
-      selectedDayNumber: getTodayIndex(mock.planRecord),
-      shoppingList: mock.shoppingList,
-      shoppingLoading: false,
-      taskId: null,
-      user: mock.user,
-    });
-    clearStoredSession();
-    nav.resetToScreen({ name: "home" });
-  }
   async function hydratePlan(
     userId: string,
     planId: string,
@@ -142,10 +108,6 @@ export function useMealyController() {
     await loadRecipeDetails(planRecord.plan_data, token);
   }
   async function refreshPlan(planId: string, token?: string | null) {
-    if (isMockPlanId(planId)) {
-      await loadMockPlan("Mock week refreshed.");
-      return state.planRecord;
-    }
     const planRecord = await clientFor(token).getPlan(planId);
     if (!aliveRef.current) return planRecord;
     patch({ planRecord, shoppingList: null });
@@ -196,44 +158,7 @@ export function useMealyController() {
     }
     patch({ generationError: t("notice.genTimeout") });
   }
-  async function bootstrapDevSession() {
-    const devForm = buildDevUserBody();
-    const { user, token } = await registerOrCreateUser({
-      client,
-      fallbackPassword: devForm.password,
-      payload: formToUserPayload(devForm),
-    });
-    if (!aliveRef.current) return;
-    patch({
-      accessToken: token,
-      user,
-      onboardingForm: devForm,
-      globalNotice:
-        "Dev mode: registration skipped. Use the app manually from Today.",
-    });
-    writeStoredSession({ userId: user.id, accessToken: token ?? undefined });
-    if (!DEV_AUTO_GENERATE_PLAN) return nav.resetToScreen({ name: "home" });
-    nav.resetToScreen({ name: "generating" });
-    const { task_id } = await clientFor(token).generatePlan(user.id);
-    writeStoredSession({
-      userId: user.id,
-      taskId: task_id,
-      accessToken: token ?? undefined,
-    });
-    await monitorTask(task_id, user.id, token);
-  }
   async function loadObservability(planId: string, token?: string | null) {
-    if (isMockPlanId(planId)) {
-      if (!import.meta.env.DEV) return;
-      const { buildDevMockState } = await import("../devMockData");
-      if (aliveRef.current) {
-        patch({
-          observability: buildDevMockState().observability,
-          observabilityLoading: false,
-        });
-      }
-      return;
-    }
     patch({ observabilityLoading: true });
     try {
       const payload = await clientFor(token).observability(planId);
@@ -258,17 +183,6 @@ export function useMealyController() {
     }
   }
   async function loadShoppingList(planId: string, token?: string | null) {
-    if (isMockPlanId(planId)) {
-      if (!import.meta.env.DEV) return;
-      const { buildDevMockState } = await import("../devMockData");
-      if (aliveRef.current) {
-        patch({
-          shoppingList: buildDevMockState().shoppingList,
-          shoppingLoading: false,
-        });
-      }
-      return;
-    }
     patch({ shoppingLoading: true });
     try {
       const shoppingList = await clientFor(token).shoppingList(planId);
@@ -307,13 +221,11 @@ export function useMealyController() {
     signOut,
     recipeById,
     getMealContext,
-    bootstrapDevSession,
     hydratePlan,
     refreshPlan,
     monitorTask,
     loadShoppingList,
     loadObservability,
-    loadMockPlan,
     setAccessToken,
     notice,
     client,

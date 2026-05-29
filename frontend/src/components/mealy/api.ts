@@ -1,4 +1,3 @@
-import { USE_DEMO_PIPELINE } from "./config"
 import type { AuthResponse, ObservabilityStep } from "./types"
 
 export async function readError(response: Response): Promise<string> {
@@ -10,11 +9,11 @@ export async function readError(response: Response): Promise<string> {
   }
 }
 export function generationEndpoint(): string {
-  return USE_DEMO_PIPELINE ? "/api/demo/generate-plan" : "/api/generate-plan"
+  return "/api/generate-plan"
 }
 
 export function taskEndpoint(taskId: string): string {
-  return USE_DEMO_PIPELINE ? `/api/demo/tasks/${taskId}` : `/api/tasks/${taskId}`
+  return `/api/tasks/${taskId}`
 }
 
 export function normalizeTaskStatus(status: string): string {

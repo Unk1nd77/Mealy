@@ -1,4 +1,3 @@
-import { USE_DEMO_PIPELINE } from "../config"
 import { normalizeObservabilityStep } from "../api"
 import type { ObservabilityResponse, TaskResponse } from "../types"
 
@@ -8,7 +7,7 @@ export function observabilityFromTask(
 ): ObservabilityResponse | null {
   if (!task.steps?.length) return fallback
   return {
-    source: USE_DEMO_PIPELINE ? "live_task" : "derived_task",
+    source: "live_task",
     summary: task.current_step
       ? `Current step: ${task.current_step.replaceAll("_", " ")}`
       : "Generation is in progress.",

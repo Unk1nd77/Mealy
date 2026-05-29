@@ -88,7 +88,7 @@ export function formatObservabilitySummary(
     observability.steps.length > 0 &&
     observability.steps.every((step) => step.status === "completed")
 
-  if (allCompleted || observability.source === "dev_mock" || observability.source === "derived_plan") {
+  if (allCompleted || observability.source === "derived_plan") {
     return t("observability.summary.ready")
   }
 

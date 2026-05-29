@@ -1,7 +1,6 @@
 import type { FormEvent } from "react";
 
 import { useI18n } from "../i18n";
-import { DEV_USE_MOCK_DATA } from "../config";
 import { extractBearerToken } from "../api";
 import {
   createMealyClient,
@@ -9,7 +8,6 @@ import {
   profileToUserPayload,
 } from "../client";
 import { clamp } from "../formatters";
-import { isMockPlanId } from "../mockPlan";
 import { patchStoredSession } from "../session";
 import { registerOrCreateUser } from "./authFlow";
 import { createMealCommands } from "./mealCommands";
@@ -98,11 +96,6 @@ export function useMealyCommands(core: MealyCore) {
   async function createUserAndGenerate(event: FormEvent) {
     event.preventDefault();
     core.patch({ errorNotice: "", globalNotice: "", isWorking: true });
-    if (DEV_USE_MOCK_DATA) {
-      await core.loadMockPlan("Dev mode: mock week loaded.");
-      core.patch({ isWorking: false });
-      return;
-    }
     try {
       const tokenBeforeGenerate = core.accessToken;
       const { user, token } = await registerOrCreateUser({
@@ -138,10 +131,6 @@ export function useMealyCommands(core: MealyCore) {
 
   async function regenerateWeek() {
     if (!core.user) return;
-    if (DEV_USE_MOCK_DATA || isMockPlanId(core.planRecord?.id)) {
-      await core.loadMockPlan("Mock week refreshed.");
-      return;
-    }
     core.patch({
       errorNotice: "",
       globalNotice: "",
@@ -170,17 +159,6 @@ export function useMealyCommands(core: MealyCore) {
   async function saveProfile() {
     if (!core.user) return;
     core.patch({ isSavingProfile: true, errorNotice: "", globalNotice: "" });
-    if (isMockPlanId(core.planRecord?.id)) {
-      core.patch({
-        globalNotice: "Mock profile saved locally.",
-        isSavingProfile: false,
-        user: {
-          ...core.user,
-          ...profileToUserPayload(core.profileDraft),
-        },
-      });
-      return;
-    }
     if (!core.accessToken) {
       core.patch({
         errorNotice: t("notice.sessionExpired"),

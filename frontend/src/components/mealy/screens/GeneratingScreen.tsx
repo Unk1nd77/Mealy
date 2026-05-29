@@ -1,6 +1,6 @@
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { useI18n } from "../i18n";
-import { CheckIcon, SparkIcon } from "../ui/icons";
+import { SparkIcon } from "../ui/icons";
 import { ObservabilityPanel } from "../ui/planWidgets";
 
 type GeneratingCore = Pick<
@@ -32,23 +32,6 @@ export function GeneratingScreen({
           ? t("generating.statusGenerating")
           : t("generating.statusPending");
 
-  const stages = [
-    {
-      label: t("generating.stage1"),
-      active: core.generationStatus !== "PENDING" || !!core.user,
-    },
-    {
-      label: t("generating.stage2"),
-      active:
-        core.generationStatus === "GENERATING" ||
-        core.generationStatus === "READY",
-    },
-    {
-      label: t("generating.stage3"),
-      active: core.generationStatus === "READY",
-    },
-  ];
-
   return (
     <section className="screen-card screen-card--generation">
       <div className="generation-orbit">
@@ -62,30 +45,6 @@ export function GeneratingScreen({
         <span className="section-copy__eyebrow">{t("generating.eyebrow")}</span>
         <h1>{t("generating.title")}</h1>
         <p>{statusText}</p>
-      </div>
-      <div className="progress-stack">
-        {stages.map((stage) => (
-          <div
-            key={stage.label}
-            className={`progress-step ${stage.active ? "is-active" : ""}`}
-          >
-            <span className="progress-step__icon">
-              {stage.active ? (
-                <CheckIcon className="icon" />
-              ) : (
-                <span className="progress-step__dot" />
-              )}
-            </span>
-            <div>
-              <strong>{stage.label}</strong>
-              <p>
-                {stage.active
-                  ? t("generating.stageActive")
-                  : t("generating.stageWaiting")}
-              </p>
-            </div>
-          </div>
-        ))}
       </div>
       <ObservabilityPanel
         mode="generation"
