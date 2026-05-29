@@ -126,6 +126,13 @@ uv run python scripts/seed_demo_user.py
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
+В отдельном терминале запусти worker генерации:
+
+```bash
+cd backend
+uv run celery -A app.worker.celery_app worker --loglevel=info
+```
+
 Запуск frontend:
 
 ```bash
