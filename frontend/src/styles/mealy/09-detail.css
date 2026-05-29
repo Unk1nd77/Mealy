@@ -84,7 +84,10 @@
     font-size: 2.1rem;
   }
 
-  .hero-stats,
+  .hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .macro-grid {
     grid-template-columns: 1fr;
   }

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     DEV_MODE: bool = False
-    DEV_USER_EMAIL: str = "demo@mealy.local"
+    DEV_USER_EMAIL: str = "demo@example.com"
     DEV_USER_PASSWORD: str = "demo123456"
 
     @property

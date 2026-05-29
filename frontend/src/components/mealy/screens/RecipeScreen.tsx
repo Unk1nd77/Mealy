@@ -1,161 +1,265 @@
-import "../../../styles/mealy/02-form-actions.css"
-import "../../../styles/mealy/02-form-panels.css"
-import "../../../styles/mealy/03-cards.css"
-import "../../../styles/mealy/04-generation.css"
-import "../../../styles/mealy/07-actions.css"
-import "../../../styles/mealy/08-meals.css"
-import "../../../styles/mealy/09-detail.css"
+import { useState } from "react";
 
-import type { MealyCommands, MealyCore } from "../controller/useMealyCommands"
-import { formatMealType, mealVisualClass } from "../formatters"
-import { ScreenHeader } from "../ui/ScreenHeader"
+import "../../../styles/mealy/02-form-actions.css";
+import "../../../styles/mealy/02-form-panels.css";
+import "../../../styles/mealy/03-cards.css";
+import "../../../styles/mealy/04-generation.css";
+import "../../../styles/mealy/07-actions.css";
+import "../../../styles/mealy/08-meals.css";
+import "../../../styles/mealy/09-detail.css";
+
+import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
+import { formatAmount, formatMealType, mealVisualClass } from "../formatters";
+import { useI18n } from "../i18n";
+import type { Ingredient, MealItem, RecipeDetail } from "../types";
+import { ScreenHeader } from "../ui/ScreenHeader";
 
 type RecipeCore = Pick<
   MealyCore,
-  "getMealContext" | "mealActionLoading" | "popScreen" | "pushScreen" | "recipeById"
->
-type RecipeCommands = Pick<MealyCommands, "cancelCurrentMeal" | "swapCurrentMeal">
+  | "getMealContext"
+  | "mealActionLoading"
+  | "popScreen"
+  | "pushScreen"
+  | "recipeById"
+>;
+type RecipeCommands = Pick<
+  MealyCommands,
+  "cancelCurrentMeal" | "swapCurrentMeal"
+>;
+
+function buildCookingSteps(
+  meal: MealItem,
+  recipe: RecipeDetail | null,
+  t: ReturnType<typeof useI18n>["t"],
+): string[] {
+  const ingredients = recipe?.ingredients ?? meal.ingredients_summary;
+  const names = ingredients
+    .map((ingredient) => ingredient.name.toLowerCase())
+    .join(" ");
+  const hasGrain =
+    /рис|греч|паста|спагетти|киноа|rice|pasta|noodle|buckwheat/.test(names);
+  const hasProtein =
+    /кур|гов|фарш|рыб|лосос|яйц|творог|chicken|beef|fish|egg|cottage/.test(
+      names,
+    );
+
+  const steps = [t("recipe.stepPrep")];
+  if (hasGrain) steps.push(t("recipe.stepCook"));
+  if (hasProtein && !hasGrain) steps.push(t("recipe.stepCook"));
+  steps.push(t("recipe.stepCombine"), t("recipe.stepServe"));
+  return Array.from(new Set(steps));
+}
 
 export function RecipeScreen({
   commands,
   core,
   recipeId,
+  dayNumber,
+  mealType,
 }: {
-  commands: RecipeCommands
-  core: RecipeCore
-  recipeId: string
+  commands: RecipeCommands;
+  core: RecipeCore;
+  recipeId: string;
+  dayNumber?: number;
+  mealType?: string;
 }) {
-  const recipe = core.recipeById(recipeId)
-  const context = core.getMealContext(recipeId)
-  const meal = context?.meal
+  const { language, t } = useI18n();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const recipe = core.recipeById(recipeId);
+  const context = core.getMealContext(recipeId, dayNumber, mealType);
+  const meal = context?.meal;
 
   if (!meal) {
     return (
       <section className="screen-card">
         <ScreenHeader
-          title="Recipe"
-          subtitle="Could not find this recipe in the current plan."
+          title={t("recipe.titleFallback")}
+          subtitle={t("recipe.notAvailableSubtitle")}
           onBack={core.popScreen}
         />
         <div className="empty-state">
-          <h3>Recipe not available</h3>
-          <p>Return to Today or Weekly Plan and pick another meal card.</p>
+          <h3>{t("recipe.notAvailable")}</h3>
+          <p>{t("recipe.notAvailableCopy")}</p>
         </div>
       </section>
-    )
+    );
   }
 
-  const ingredients = recipe?.ingredients ?? meal.ingredients_summary ?? []
+  const ingredients = recipe?.ingredients ?? meal.ingredients_summary ?? [];
+  const cookingSteps = buildCookingSteps(meal, recipe, t);
   return (
     <section className="screen-card screen-card--detail">
       <ScreenHeader
         title={meal.title}
-        subtitle="Recipe detail with macros, ingredients, and a quick jump into groceries."
+        subtitle={t("recipe.subtitle")}
         onBack={core.popScreen}
       />
       <div className={`${mealVisualClass(meal.type)} meal-visual--detail`}>
         <div className="meal-visual__content meal-visual__content--detail">
-          <span className="pill pill--soft">{formatMealType(meal.type)}</span>
+          <span className="pill pill--soft">
+            {formatMealType(meal.type, language)}
+          </span>
           <strong>{meal.title}</strong>
           <p>
-            {meal.time || "Anytime meal"} ·{" "}
-            {recipe?.prep_time_min ? `${recipe.prep_time_min} min` : "Ready when you are"}
+            {meal.time || t("recipe.anytime")} ·{" "}
+            {recipe?.prep_time_min
+              ? t("recipe.prepTime", { count: recipe.prep_time_min })
+              : t("recipe.ready")}
           </p>
         </div>
       </div>
       <div className="macro-grid">
         <div>
           <strong>{Math.round(meal.calories)}</strong>
-          <span>kcal</span>
+          <span>{t("common.kcal")}</span>
         </div>
         <div>
           <strong>{Math.round(meal.protein)}g</strong>
-          <span>Protein</span>
+          <span>{t("common.protein")}</span>
         </div>
         <div>
           <strong>{Math.round(meal.fat)}g</strong>
-          <span>Fat</span>
+          <span>{t("common.fat")}</span>
         </div>
         <div>
           <strong>{Math.round(meal.carbs)}g</strong>
-          <span>Carbs</span>
+          <span>{t("common.carbs")}</span>
         </div>
       </div>
       <section className="detail-block">
         <div className="section-heading">
           <div>
-            <span className="section-heading__eyebrow">Plan controls</span>
-            <h2>Adjust this meal</h2>
+            <span className="section-heading__eyebrow">
+              {t("recipe.planControls")}
+            </span>
+            <h2>{t("recipe.adjust")}</h2>
           </div>
         </div>
         <div className="meal-control-grid">
           <button
             type="button"
             className="button button--ghost"
-            onClick={() => void commands.swapCurrentMeal(recipeId)}
+            onClick={() =>
+              void commands.swapCurrentMeal(recipeId, dayNumber, mealType)
+            }
             disabled={core.mealActionLoading !== null}
           >
-            {core.mealActionLoading === "swap" ? "Replacing..." : "Replace meal"}
+            {core.mealActionLoading === "swap"
+              ? t("recipe.replacing")
+              : t("recipe.replace")}
           </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => void commands.cancelCurrentMeal(recipeId)}
-            disabled={core.mealActionLoading !== null}
-          >
-            {core.mealActionLoading === "cancel" ? "Removing..." : "Remove"}
-          </button>
+          {confirmRemove ? (
+            <div className="remove-confirm">
+              <p>
+                <strong>{t("recipe.removeConfirm")}</strong>
+                <span>{t("recipe.removeConfirmText")}</span>
+              </p>
+              <div className="meal-control-grid">
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => {
+                    setConfirmRemove(false);
+                    void commands.cancelCurrentMeal(
+                      recipeId,
+                      dayNumber,
+                      mealType,
+                    );
+                  }}
+                  disabled={core.mealActionLoading !== null}
+                >
+                  {core.mealActionLoading === "cancel"
+                    ? t("recipe.removing")
+                    : t("recipe.removeYes")}
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => setConfirmRemove(false)}
+                  disabled={core.mealActionLoading !== null}
+                >
+                  {t("recipe.removeNo")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => setConfirmRemove(true)}
+              disabled={core.mealActionLoading !== null}
+            >
+              {t("recipe.remove")}
+            </button>
+          )}
         </div>
       </section>
       <section className="detail-block">
         <div className="section-heading">
           <div>
-            <span className="section-heading__eyebrow">Description</span>
-            <h2>What this meal does</h2>
+            <span className="section-heading__eyebrow">
+              {t("recipe.description")}
+            </span>
+            <h2>{t("recipe.descriptionTitle")}</h2>
           </div>
         </div>
         <p className="soft-copy">
-          {recipe?.description ||
-            "A guided meal from your current plan. Exact ingredients come from the verified recipe catalog used during generation."}
+          {recipe?.description || t("recipe.descriptionFallback")}
         </p>
       </section>
       <section className="detail-block">
         <div className="section-heading">
           <div>
-            <span className="section-heading__eyebrow">Ingredients</span>
-            <h2>What to prepare</h2>
+            <span className="section-heading__eyebrow">
+              {t("recipe.ingredients")}
+            </span>
+            <h2>{t("recipe.ingredientsTitle")}</h2>
           </div>
         </div>
         <div className="ingredient-list">
-          {ingredients.map((ingredient) => (
+          {ingredients.map((ingredient: Ingredient) => (
             <div
               key={`${ingredient.name}-${ingredient.amount}-${ingredient.unit}`}
               className="ingredient-row"
             >
               <div>
                 <strong>{ingredient.name}</strong>
-                <span>{ingredient.unit}</span>
               </div>
-              <span>
-                {ingredient.amount} {ingredient.unit}
-              </span>
+              <span>{formatAmount(ingredient, language)}</span>
             </div>
           ))}
         </div>
       </section>
+      <section className="detail-block">
+        <div className="section-heading">
+          <div>
+            <span className="section-heading__eyebrow">
+              {t("recipe.steps")}
+            </span>
+            <h2>{t("recipe.stepsTitle")}</h2>
+          </div>
+        </div>
+        <ol className="recipe-steps">
+          {cookingSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </section>
       <div className="sticky-footer">
         <div className="sticky-footer__summary">
-          <strong>{Math.round(meal.calories)} kcal</strong>
-          <span>{formatMealType(meal.type)}</span>
+          <strong>
+            {Math.round(meal.calories)} {t("common.kcal")}
+          </strong>
+          <span>{formatMealType(meal.type, language)}</span>
         </div>
         <button
           type="button"
           className="button button--primary"
           onClick={() => core.pushScreen({ name: "shopping" })}
         >
-          Open shopping list
+          {t("recipe.openShopping")}
         </button>
       </div>
     </section>
-  )
+  );
 }

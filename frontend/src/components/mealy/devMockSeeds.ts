@@ -1,157 +1,165 @@
-import type { MealItem, ShoppingItem } from "./types"
+import type { MealItem, ShoppingItem } from "./types";
 
-export type MockMealSeed = Omit<MealItem, "recipe_id" | "ingredients_summary"> & {
-  recipe_id: string
-  description: string
-  ingredients: ShoppingItem[]
-  tags: string[]
-}
+export type MockMealSeed = Omit<
+  MealItem,
+  "recipe_id" | "ingredients_summary"
+> & {
+  recipe_id: string;
+  description: string;
+  ingredients: ShoppingItem[];
+  tags: string[];
+};
 
 export const mealSeeds: MockMealSeed[] = [
   {
     type: "breakfast",
     time: "08:00",
     recipe_id: "mock-greek-yogurt-bowl",
-    title: "Greek yogurt bowl",
+    title: "Йогуртовая чаша с ягодами",
     calories: 430,
     protein: 34,
     fat: 12,
     carbs: 48,
-    description: "Creamy yogurt, berries, oats, and seeds for a calm high-protein morning.",
+    description:
+      "Греческий йогурт, черника, овсяные хлопья и семена чиа — сытный завтрак с высоким содержанием белка.",
     ingredients: [
-      { name: "Greek yogurt", amount: 220, unit: "g" },
-      { name: "Blueberries", amount: 90, unit: "g" },
-      { name: "Rolled oats", amount: 45, unit: "g" },
-      { name: "Chia seeds", amount: 10, unit: "g" },
+      { name: "Греческий йогурт", amount: 220, unit: "g" },
+      { name: "Черника", amount: 90, unit: "g" },
+      { name: "Овсяные хлопья", amount: 45, unit: "g" },
+      { name: "Семена чиа", amount: 10, unit: "g" },
     ],
-    tags: ["breakfast", "high protein", "quick"],
+    tags: ["завтрак", "высокий белок", "быстро"],
   },
   {
     type: "lunch",
     time: "12:45",
     recipe_id: "mock-salmon-rice-plate",
-    title: "Salmon rice plate",
+    title: "Рис с лососем",
     calories: 690,
     protein: 44,
     fat: 25,
     carbs: 68,
-    description: "Baked salmon with rice, cucumber, avocado, and a lemon-herb finish.",
+    description:
+      "Запечённый лосось с рисом, огурцом, авокадо и лимонно-травяной заправкой.",
     ingredients: [
-      { name: "Salmon fillet", amount: 170, unit: "g" },
-      { name: "Cooked rice", amount: 180, unit: "g" },
-      { name: "Avocado", amount: 70, unit: "g" },
-      { name: "Cucumber", amount: 100, unit: "g" },
+      { name: "Филе лосося", amount: 170, unit: "g" },
+      { name: "Отварной рис", amount: 180, unit: "g" },
+      { name: "Авокадо", amount: 70, unit: "g" },
+      { name: "Огурец", amount: 100, unit: "g" },
     ],
-    tags: ["lunch", "omega 3", "balanced"],
+    tags: ["обед", "омега-3", "баланс"],
   },
   {
     type: "snack",
     time: "16:30",
     recipe_id: "mock-apple-almond-snack",
-    title: "Apple almond snack",
+    title: "Яблоко с миндалём",
     calories: 260,
     protein: 8,
     fat: 15,
     carbs: 30,
-    description: "A simple snack with fruit, almonds, and cottage cheese.",
+    description: "Простой перекус: свежее яблоко, миндаль и творог.",
     ingredients: [
-      { name: "Apple", amount: 1, unit: "pc" },
-      { name: "Almonds", amount: 22, unit: "g" },
-      { name: "Cottage cheese", amount: 100, unit: "g" },
+      { name: "Яблоко", amount: 1, unit: "pc" },
+      { name: "Миндаль", amount: 22, unit: "g" },
+      { name: "Творог", amount: 100, unit: "g" },
     ],
-    tags: ["snack", "simple"],
+    tags: ["перекус", "просто"],
   },
   {
     type: "dinner",
     time: "19:30",
     recipe_id: "mock-chicken-vegetable-tray",
-    title: "Chicken vegetable tray",
+    title: "Запечённая курица с овощами",
     calories: 650,
     protein: 52,
     fat: 22,
     carbs: 54,
-    description: "Roasted chicken, potatoes, carrots, and greens on one tray.",
+    description:
+      "Куриная грудка, картофель, морковь и зелень — всё на одном противне.",
     ingredients: [
-      { name: "Chicken breast", amount: 190, unit: "g" },
-      { name: "Potatoes", amount: 220, unit: "g" },
-      { name: "Carrots", amount: 120, unit: "g" },
-      { name: "Olive oil", amount: 12, unit: "ml" },
+      { name: "Куриная грудка", amount: 190, unit: "g" },
+      { name: "Картофель", amount: 220, unit: "g" },
+      { name: "Морковь", amount: 120, unit: "g" },
+      { name: "Оливковое масло", amount: 12, unit: "ml" },
     ],
-    tags: ["dinner", "meal prep"],
+    tags: ["ужин", "заготовка"],
   },
   {
     type: "breakfast",
     time: "08:15",
     recipe_id: "mock-spinach-omelette",
-    title: "Spinach omelette",
+    title: "Омлет со шпинатом",
     calories: 470,
     protein: 35,
     fat: 27,
     carbs: 24,
-    description: "Egg omelette with spinach, feta, tomato, and toast.",
+    description:
+      "Яичный омлет со шпинатом, фетой, томатом и цельнозерновым тостом.",
     ingredients: [
-      { name: "Eggs", amount: 3, unit: "pcs" },
-      { name: "Spinach", amount: 80, unit: "g" },
-      { name: "Feta", amount: 35, unit: "g" },
-      { name: "Whole-grain toast", amount: 1, unit: "slice" },
+      { name: "Яйца", amount: 3, unit: "pcs" },
+      { name: "Шпинат", amount: 80, unit: "g" },
+      { name: "Фета", amount: 35, unit: "g" },
+      { name: "Цельнозерновой тост", amount: 1, unit: "pc" },
     ],
-    tags: ["breakfast", "savory"],
+    tags: ["завтрак", "сытный"],
   },
   {
     type: "lunch",
     time: "13:00",
     recipe_id: "mock-turkey-quinoa-bowl",
-    title: "Turkey quinoa bowl",
+    title: "Индейка с киноа",
     calories: 710,
     protein: 50,
     fat: 20,
     carbs: 78,
-    description: "Lean turkey, quinoa, tomatoes, greens, and yogurt dressing.",
+    description:
+      "Нежирный фарш из индейки, киноа, черри-помидоры, зелень и йогуртовый соус.",
     ingredients: [
-      { name: "Turkey mince", amount: 180, unit: "g" },
-      { name: "Quinoa", amount: 170, unit: "g" },
-      { name: "Cherry tomatoes", amount: 120, unit: "g" },
-      { name: "Greek yogurt", amount: 60, unit: "g" },
+      { name: "Фарш из индейки", amount: 180, unit: "g" },
+      { name: "Киноа", amount: 170, unit: "g" },
+      { name: "Черри-помидоры", amount: 120, unit: "g" },
+      { name: "Греческий йогурт", amount: 60, unit: "g" },
     ],
-    tags: ["lunch", "high protein"],
+    tags: ["обед", "высокий белок"],
   },
   {
     type: "snack",
     time: "16:00",
     recipe_id: "mock-hummus-crunch",
-    title: "Hummus crunch plate",
+    title: "Хумус с овощами",
     calories: 310,
     protein: 11,
     fat: 14,
     carbs: 38,
-    description: "Hummus with crisp vegetables and rye crackers.",
+    description: "Хумус с хрустящими овощами и ржаными хлебцами.",
     ingredients: [
-      { name: "Hummus", amount: 80, unit: "g" },
-      { name: "Bell pepper", amount: 100, unit: "g" },
-      { name: "Carrots", amount: 100, unit: "g" },
-      { name: "Rye crackers", amount: 35, unit: "g" },
+      { name: "Хумус", amount: 80, unit: "g" },
+      { name: "Болгарский перец", amount: 100, unit: "g" },
+      { name: "Морковь", amount: 100, unit: "g" },
+      { name: "Ржаные хлебцы", amount: 35, unit: "g" },
     ],
-    tags: ["snack", "fiber"],
+    tags: ["перекус", "клетчатка"],
   },
   {
     type: "dinner",
     time: "19:15",
     recipe_id: "mock-beef-noodle-stir",
-    title: "Beef noodle stir-fry",
+    title: "Говядина с лапшой",
     calories: 720,
     protein: 47,
     fat: 24,
     carbs: 78,
-    description: "Beef strips, noodles, broccoli, and ginger-soy sauce.",
+    description: "Полоски говядины, лапша, брокколи и имбирно-соевый соус.",
     ingredients: [
-      { name: "Lean beef", amount: 170, unit: "g" },
-      { name: "Noodles", amount: 190, unit: "g" },
-      { name: "Broccoli", amount: 150, unit: "g" },
-      { name: "Soy sauce", amount: 20, unit: "ml" },
+      { name: "Нежирная говядина", amount: 170, unit: "g" },
+      { name: "Лапша", amount: 190, unit: "g" },
+      { name: "Брокколи", amount: 150, unit: "g" },
+      { name: "Соевый соус", amount: 20, unit: "ml" },
     ],
-    tags: ["dinner", "warm"],
+    tags: ["ужин", "тёплое"],
   },
-]
+];
 
 export const dayIndexes = [
   [0, 1, 2, 3],
@@ -161,4 +169,4 @@ export const dayIndexes = [
   [0, 5, 6, 3],
   [4, 1, 2, 7],
   [0, 1, 6, 3],
-]
+];

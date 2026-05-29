@@ -1,42 +1,59 @@
-import "../../../styles/mealy/02-form-actions.css"
-import "../../../styles/mealy/02-form-panels.css"
-import "../../../styles/mealy/03-cards.css"
-import "../../../styles/mealy/04-generation-run.css"
-import "../../../styles/mealy/04-generation.css"
+import "../../../styles/mealy/02-form-actions.css";
+import "../../../styles/mealy/02-form-panels.css";
+import "../../../styles/mealy/03-cards.css";
+import "../../../styles/mealy/04-generation-run.css";
+import "../../../styles/mealy/04-generation.css";
 
-import type { MealyCommands, MealyCore } from "../controller/useMealyCommands"
-import { CheckIcon, SparkIcon } from "../ui/icons"
-import { ObservabilityPanel } from "../ui/planWidgets"
+import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
+import { useI18n } from "../i18n";
+import { CheckIcon, SparkIcon } from "../ui/icons";
+import { ObservabilityPanel } from "../ui/planWidgets";
 
 type GeneratingCore = Pick<
   MealyCore,
-  "generationError" | "generationStatus" | "observability" | "observabilityLoading" | "user"
->
-type GeneratingCommands = Pick<MealyCommands, "regenerateWeek">
+  | "generationError"
+  | "generationStatus"
+  | "observability"
+  | "observabilityLoading"
+  | "resetToScreen"
+  | "user"
+>;
+type GeneratingCommands = Pick<MealyCommands, "regenerateWeek">;
 
 export function GeneratingScreen({
   commands,
   core,
 }: {
-  commands: GeneratingCommands
-  core: GeneratingCore
+  commands: GeneratingCommands;
+  core: GeneratingCore;
 }) {
+  const { t } = useI18n();
+
   const statusText =
     core.generationStatus === "READY"
-      ? "Your week is almost on screen."
+      ? t("generating.statusReady")
       : core.generationStatus === "FAILED"
-        ? core.generationError || "Generation failed."
+        ? t("generating.statusFailed")
         : core.generationStatus === "GENERATING"
-          ? "Matching recipes, balancing calories, building the final week."
-          : "Creating your nutrition profile and queueing the plan."
+          ? t("generating.statusGenerating")
+          : t("generating.statusPending");
+
   const stages = [
-    { label: "Profile parsed", active: core.generationStatus !== "PENDING" || !!core.user },
     {
-      label: "Recipe pool matched",
-      active: core.generationStatus === "GENERATING" || core.generationStatus === "READY",
+      label: t("generating.stage1"),
+      active: core.generationStatus !== "PENDING" || !!core.user,
     },
-    { label: "Week balanced", active: core.generationStatus === "READY" },
-  ]
+    {
+      label: t("generating.stage2"),
+      active:
+        core.generationStatus === "GENERATING" ||
+        core.generationStatus === "READY",
+    },
+    {
+      label: t("generating.stage3"),
+      active: core.generationStatus === "READY",
+    },
+  ];
 
   return (
     <section className="screen-card screen-card--generation">
@@ -48,13 +65,16 @@ export function GeneratingScreen({
         </span>
       </div>
       <div className="section-copy section-copy--centered">
-        <span className="section-copy__eyebrow">AI planning in progress</span>
-        <h1>Designing your week</h1>
+        <span className="section-copy__eyebrow">{t("generating.eyebrow")}</span>
+        <h1>{t("generating.title")}</h1>
         <p>{statusText}</p>
       </div>
       <div className="progress-stack">
         {stages.map((stage) => (
-          <div key={stage.label} className={`progress-step ${stage.active ? "is-active" : ""}`}>
+          <div
+            key={stage.label}
+            className={`progress-step ${stage.active ? "is-active" : ""}`}
+          >
             <span className="progress-step__icon">
               {stage.active ? (
                 <CheckIcon className="icon" />
@@ -64,7 +84,11 @@ export function GeneratingScreen({
             </span>
             <div>
               <strong>{stage.label}</strong>
-              <p>{stage.active ? "Moving forward" : "Waiting for this stage"}</p>
+              <p>
+                {stage.active
+                  ? t("generating.stageActive")
+                  : t("generating.stageWaiting")}
+              </p>
             </div>
           </div>
         ))}
@@ -76,17 +100,27 @@ export function GeneratingScreen({
       />
       {core.generationError ? (
         <div className="alert alert--error">
-          <strong>Couldn&apos;t finish this run.</strong>
+          <strong>{t("generating.errorTitle")}</strong>
           <p>{core.generationError}</p>
           <button
             type="button"
             className="button button--primary"
             onClick={commands.regenerateWeek}
           >
-            Try again
+            {t("generating.tryAgain")}
           </button>
         </div>
-      ) : null}
+      ) : (
+        <div className="form-actions form-actions--centered">
+          <button
+            type="button"
+            className="secondary-cta secondary-cta--quiet"
+            onClick={() => core.resetToScreen({ name: "home" })}
+          >
+            {t("generating.cancel")}
+          </button>
+        </div>
+      )}
     </section>
-  )
+  );
 }

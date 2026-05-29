@@ -179,6 +179,47 @@
   text-align: right;
 }
 
+.ingredient-row > span,
+.shopping-row > span {
+  flex: 0 0 auto;
+  min-width: 72px;
+  font-weight: 650;
+}
+
+.recipe-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: recipe-step;
+}
+
+.recipe-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-pearl);
+  color: var(--ink);
+}
+
+.recipe-steps li::before {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: var(--primary);
+  content: counter(recipe-step);
+  counter-increment: recipe-step;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .profile-block {
   padding: 16px;
 }

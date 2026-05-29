@@ -130,8 +130,18 @@ function CurrentScreen({
       return <IntegrationsScreen commands={commands} core={core} />
     case "profile":
       return <ProfileScreen commands={commands} core={core} />
-    case "recipe":
-      return <RecipeScreen commands={commands} core={core} recipeId={core.currentScreen.recipeId} />
+    case "recipe": {
+      const { dayNumber, mealType, recipeId } = core.currentScreen
+      return (
+        <RecipeScreen
+          commands={commands}
+          core={core}
+          recipeId={recipeId}
+          {...(dayNumber !== undefined ? { dayNumber } : {})}
+          {...(mealType !== undefined ? { mealType } : {})}
+        />
+      )
+    }
     default:
       return <OnboardingScreen commands={commands} core={core} />
   }

@@ -149,9 +149,7 @@ async def register_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
     existing_user = existing.scalar_one_or_none()
     if existing_user:
         if settings.DEV_MODE:
-            logger.warning(
-                "DEV_MODE: /register treats existing email {} as login", data.email
-            )
+            logger.warning("DEV_MODE: /register treats existing email {} as login", data.email)
             return await _issue_auth_response(db, existing_user)
         raise HTTPException(status_code=409, detail="Email already registered")
 
