@@ -6,6 +6,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routes.auth import get_current_user
 from app.api.schemas import UserCreate, UserResponse, UserUpdate
 from app.core import cache
 from app.core.relational_store import load_user_profile_from_rows, sync_user_normalized
@@ -90,8 +91,12 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def update_user(
     user_id: uuid.UUID,
     data: UserUpdate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Cannot update another user's profile")
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:

@@ -11,6 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.recipe_steps import parse_cooking_steps
 from app.db.models import (
     DEFAULT_MEAL_SCHEDULE,
     GenerationRun,
@@ -264,6 +265,7 @@ def recipe_to_dict(recipe: Recipe) -> dict[str, Any]:
         "id": str(recipe.id),
         "title": recipe.title,
         "description": recipe.description,
+        "cooking_steps": parse_cooking_steps(recipe.description),
         "ingredients": ingredients,
         "calories": recipe.calories,
         "protein": recipe.protein,

@@ -257,6 +257,37 @@ def test_build_validation_report_uses_specific_reason_code_for_unsafe_combinatio
 
 
 @pytest.mark.asyncio
+async def test_admit_recipe_candidate_persists_ai_cooking_steps_in_recipe_description():
+    session = _FakeSession()
+    candidate = await catalog_ingest.create_recipe_candidate(
+        session,
+        payload={
+            **_payload(),
+            "description": "High protein lunch.",
+            "cooking_steps": ["Cook rice", "Grill chicken", "Assemble the bowl"],
+        },
+        source_url="https://example.com/recipe",
+        source_type="web",
+        submitted_by="research-agent",
+    )
+    await catalog_ingest.add_candidate_review(
+        session,
+        candidate_id=str(candidate.id),
+        verdict=RecipeReviewVerdict.accept,
+        reviewer="verification-agent",
+        reason_codes=[],
+        notes="Looks good",
+    )
+
+    recipe = await catalog_ingest.admit_recipe_candidate(session, candidate_id=str(candidate.id))
+
+    assert "High protein lunch." in recipe.description
+    assert "1. Cook rice." in recipe.description
+    assert "2. Grill chicken." in recipe.description
+    assert "3. Assemble the bowl." in recipe.description
+
+
+@pytest.mark.asyncio
 async def test_admit_recipe_candidate_invalidates_recipe_cache(monkeypatch):
     session = _FakeSession()
     deleted_keys: list[str] = []

@@ -50,6 +50,7 @@ export type RecipeDetail = {
   id: string
   title: string
   description?: string
+  cooking_steps?: string[]
   ingredients: Ingredient[]
   calories: number
   protein: number

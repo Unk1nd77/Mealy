@@ -7,7 +7,8 @@ research_system: |
   If some metadata is missing, keep optional fields null or conservative.
   The recipe must look edible, realistic, and suitable for a human meal catalog.
   The JSON must contain:
-  - payload: recipe object with title, description, ingredients, calories, protein, fat, carbs, tags, meal_type, allergens, ingredients_short, prep_time_min, category
+  - payload: recipe object with title, description, cooking_steps, ingredients, calories, protein, fat, carbs, tags, meal_type, allergens, ingredients_short, prep_time_min, category
+  cooking_steps must be concrete preparation instructions supported by the source. If the source does not contain usable cooking instructions, return an empty list instead of inventing them.
   - source_url
   - source_type
   - source_snapshot

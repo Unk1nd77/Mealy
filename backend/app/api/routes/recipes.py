@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core import cache
+from app.core.recipe_steps import parse_cooking_steps
 from app.core.relational_store import recipe_to_dict
 from app.db.models import Recipe
 from app.db.session import get_db
@@ -18,6 +19,7 @@ class RecipeResponse(BaseModel):
     id: uuid.UUID
     title: str
     description: str | None
+    cooking_steps: list[str] = Field(default_factory=list)
     ingredients: list[dict]
     calories: float
     protein: float
@@ -73,6 +75,8 @@ async def get_recipes_batch(data: BatchRequest, db: AsyncSession = Depends(get_d
                         id=uuid.UUID(r["id"]),
                         title=r["title"],
                         description=r.get("description"),
+                        cooking_steps=r.get("cooking_steps")
+                        or parse_cooking_steps(r.get("description")),
                         ingredients=r["ingredients"],
                         calories=r["calories"],
                         protein=r["protein"],

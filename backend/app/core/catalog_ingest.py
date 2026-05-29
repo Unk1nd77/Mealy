@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
 from app.core.recipe_catalog import RecipeCatalogError, normalize_recipe_payload
+from app.core.recipe_steps import description_with_cooking_steps
 from app.core.relational_store import sync_recipe_normalized
 from app.db.models import (
     Recipe,
@@ -177,7 +178,10 @@ async def admit_recipe_candidate(session: AsyncSession, *, candidate_id: str) ->
 
     recipe = Recipe(
         title=title,
-        description=candidate.normalized_payload.get("description", ""),
+        description=description_with_cooking_steps(
+            candidate.normalized_payload.get("description", ""),
+            candidate.normalized_payload.get("cooking_steps"),
+        ),
         calories=candidate.normalized_payload["calories"],
         protein=candidate.normalized_payload["protein"],
         fat=candidate.normalized_payload["fat"],

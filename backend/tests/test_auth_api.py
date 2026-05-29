@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.routes import auth
+from app.api.routes import users
 from app.db.models import ActivityLevel, Gender, Goal, User
 from app.main import app
 
@@ -93,6 +94,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[tuple[TestClient, F
         yield fake_session
 
     app.dependency_overrides[auth.get_db] = override_get_db
+    app.dependency_overrides[users.get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client, fake_session
     app.dependency_overrides.clear()
@@ -210,3 +212,40 @@ def test_update_me_updates_profile_and_recalculates_target(
     assert payload["goal"] == "gain"
     assert payload["preferences"] == ["high protein", "simple dinners"]
     assert fake_session.users_by_email["update@example.com"].target_calories is not None
+
+
+def test_update_user_requires_matching_authenticated_user(
+    client: tuple[TestClient, FakeAsyncSession],
+) -> None:
+    test_client, fake_session = client
+    user = _make_user("linked-profile@example.com", "strong-pass")
+    other_user = _make_user("other-profile@example.com", "strong-pass")
+    fake_session.add(user)
+    fake_session.add(other_user)
+    access_token, _ = auth._create_access_token(user.id)
+
+    unauthenticated = test_client.put(
+        f"/api/users/{user.id}",
+        json={"goal": "gain"},
+    )
+    forbidden = test_client.put(
+        f"/api/users/{other_user.id}",
+        json={"goal": "gain"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    response = test_client.put(
+        f"/api/users/{user.id}",
+        json={
+            "goal": "gain",
+            "preferences": ["high protein", "simple dinners"],
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert unauthenticated.status_code == 401
+    assert forbidden.status_code == 403
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == str(user.id)
+    assert payload["goal"] == "gain"
+    assert payload["preferences"] == ["high protein", "simple dinners"]

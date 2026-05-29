@@ -12,6 +12,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
+from app.core.recipe_steps import clean_cooking_steps, parse_cooking_steps
+
 _ALLOWED_UNITS = {
     "g",
     "kg",
@@ -173,6 +175,7 @@ class RecipePayload(BaseModel):
     ingredients_short: str | None = None
     prep_time_min: int | None = Field(default=None, ge=1, le=360)
     category: str | None = None
+    cooking_steps: list[str] = Field(default_factory=list)
 
     @field_validator("calories", "protein", "fat", "carbs", mode="before")
     @classmethod
@@ -197,6 +200,11 @@ class RecipePayload(BaseModel):
     @classmethod
     def _normalize_string_lists(cls, values: list[str]) -> list[str]:
         return list(dict.fromkeys(" ".join(v.strip().split()).lower() for v in values if v.strip()))
+
+    @field_validator("cooking_steps")
+    @classmethod
+    def _normalize_cooking_steps(cls, values: list[str]) -> list[str]:
+        return clean_cooking_steps(values)
 
     @field_validator("meal_type")
     @classmethod
@@ -253,6 +261,8 @@ def normalize_recipe_payload(payload: dict[str, Any]) -> dict[str, Any]:
             raise original from exc
         raise RecipeCatalogError(first_error["msg"]) from exc
     data = recipe.model_dump()
+    if not data.get("cooking_steps"):
+        data["cooking_steps"] = parse_cooking_steps(data.get("description"))
     if not data.get("ingredients_short"):
         data["ingredients_short"] = ", ".join(
             ingredient["name"] for ingredient in data["ingredients"][:8]

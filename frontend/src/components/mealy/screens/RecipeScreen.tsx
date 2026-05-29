@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatAmount, formatMealType, mealVisualClass } from "../formatters";
 import { useI18n } from "../i18n";
-import type { Ingredient, MealItem, RecipeDetail } from "../types";
+import type { Ingredient } from "../types";
 import { ScreenHeader } from "../ui/ScreenHeader";
 
 type RecipeCore = Pick<
@@ -18,29 +18,6 @@ type RecipeCommands = Pick<
   MealyCommands,
   "cancelCurrentMeal" | "swapCurrentMeal"
 >;
-
-function buildCookingSteps(
-  meal: MealItem,
-  recipe: RecipeDetail | null,
-  t: ReturnType<typeof useI18n>["t"],
-): string[] {
-  const ingredients = recipe?.ingredients ?? meal.ingredients_summary;
-  const names = ingredients
-    .map((ingredient) => ingredient.name.toLowerCase())
-    .join(" ");
-  const hasGrain =
-    /рис|греч|паста|спагетти|киноа|rice|pasta|noodle|buckwheat/.test(names);
-  const hasProtein =
-    /кур|гов|фарш|рыб|лосос|яйц|творог|chicken|beef|fish|egg|cottage/.test(
-      names,
-    );
-
-  const steps = [t("recipe.stepPrep")];
-  if (hasGrain) steps.push(t("recipe.stepCook"));
-  if (hasProtein && !hasGrain) steps.push(t("recipe.stepCook"));
-  steps.push(t("recipe.stepCombine"), t("recipe.stepServe"));
-  return Array.from(new Set(steps));
-}
 
 export function RecipeScreen({
   commands,
@@ -78,7 +55,7 @@ export function RecipeScreen({
   }
 
   const ingredients = recipe?.ingredients ?? meal.ingredients_summary ?? [];
-  const cookingSteps = buildCookingSteps(meal, recipe, t);
+  const cookingSteps = recipe?.cooking_steps ?? [];
   return (
     <section className="screen-card screen-card--detail">
       <ScreenHeader
@@ -186,19 +163,19 @@ export function RecipeScreen({
           )}
         </div>
       </section>
-      <section className="detail-block">
-        <div className="section-heading">
-          <div>
-            <span className="section-heading__eyebrow">
-              {t("recipe.description")}
-            </span>
-            <h2>{t("recipe.descriptionTitle")}</h2>
+      {recipe?.description ? (
+        <section className="detail-block">
+          <div className="section-heading">
+            <div>
+              <span className="section-heading__eyebrow">
+                {t("recipe.description")}
+              </span>
+              <h2>{t("recipe.descriptionTitle")}</h2>
+            </div>
           </div>
-        </div>
-        <p className="soft-copy">
-          {recipe?.description || t("recipe.descriptionFallback")}
-        </p>
-      </section>
+          <p className="soft-copy">{recipe.description}</p>
+        </section>
+      ) : null}
       <section className="detail-block">
         <div className="section-heading">
           <div>
@@ -222,21 +199,23 @@ export function RecipeScreen({
           ))}
         </div>
       </section>
-      <section className="detail-block">
-        <div className="section-heading">
-          <div>
-            <span className="section-heading__eyebrow">
-              {t("recipe.steps")}
-            </span>
-            <h2>{t("recipe.stepsTitle")}</h2>
+      {cookingSteps.length ? (
+        <section className="detail-block">
+          <div className="section-heading">
+            <div>
+              <span className="section-heading__eyebrow">
+                {t("recipe.steps")}
+              </span>
+              <h2>{t("recipe.stepsTitle")}</h2>
+            </div>
           </div>
-        </div>
-        <ol className="recipe-steps">
-          {cookingSteps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </section>
+          <ol className="recipe-steps">
+            {cookingSteps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
       <div className="sticky-footer">
         <div className="sticky-footer__summary">
           <strong>

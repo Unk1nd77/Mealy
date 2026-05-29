@@ -35,6 +35,55 @@ def test_normalize_recipe_payload_builds_ingredients_short_and_normalizes_lists(
     assert normalized["ingredients_short"] == "Chicken breast, Rice"
 
 
+def test_normalize_recipe_payload_extracts_cooking_steps_from_description():
+    payload = {
+        "title": "Омлет с томатами",
+        "description": "1. Нарезать томаты. 2. Взбить яйца. 3. Обжарить до готовности.",
+        "ingredients": [
+            {"name": "Яйца", "amount": 2, "unit": "шт"},
+            {"name": "Томаты", "amount": 100, "unit": "g"},
+        ],
+        "calories": 260,
+        "protein": 18,
+        "fat": 18,
+        "carbs": 6,
+        "meal_type": "breakfast",
+    }
+
+    normalized = normalize_recipe_payload(payload)
+
+    assert normalized["cooking_steps"] == [
+        "Нарезать томаты.",
+        "Взбить яйца.",
+        "Обжарить до готовности.",
+    ]
+
+
+def test_normalize_recipe_payload_preserves_ai_cooking_steps():
+    payload = {
+        "title": "Chicken bowl",
+        "description": "High protein lunch.",
+        "cooking_steps": ["Cook rice", "Grill chicken", "Assemble the bowl"],
+        "ingredients": [
+            {"name": "Chicken", "amount": 200, "unit": "g"},
+            {"name": "Rice", "amount": 150, "unit": "g"},
+        ],
+        "calories": 520,
+        "protein": 45,
+        "fat": 6,
+        "carbs": 70,
+        "meal_type": "lunch",
+    }
+
+    normalized = normalize_recipe_payload(payload)
+
+    assert normalized["cooking_steps"] == [
+        "Cook rice.",
+        "Grill chicken.",
+        "Assemble the bowl.",
+    ]
+
+
 def test_normalize_recipe_payload_rejects_banned_or_absurd_ingredient():
     payload = {
         "title": "Weird soup",

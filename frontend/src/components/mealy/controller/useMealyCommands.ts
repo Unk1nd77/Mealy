@@ -181,13 +181,16 @@ export function useMealyCommands(core: MealyCore) {
       });
       return;
     }
+    if (!core.accessToken) {
+      core.patch({
+        errorNotice: t("notice.sessionExpired"),
+        isSavingProfile: false,
+      });
+      return;
+    }
     try {
       const payload = profileToUserPayload(core.profileDraft);
-      const user = core.accessToken
-        ? await core.client
-            .updateMe(payload)
-            .catch(() => core.client.updateUser(core.user?.id ?? "", payload))
-        : await core.client.updateUser(core.user.id, payload);
+      const user = await core.client.updateMe(payload);
       core.patch({
         user,
         globalNotice: "Preferences saved. Generate a fresh week to apply them.",
