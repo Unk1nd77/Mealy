@@ -153,6 +153,19 @@
   background: rgb(255 159 10 / 12%);
 }
 
+.meal-card--featured .meal-visual {
+  position: relative;
+  display: flex;
+  min-height: 168px;
+  align-items: stretch;
+}
+
+.meal-card__cta--overlay {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+}
+
 .meal-visual {
   min-height: 148px;
   padding: 16px;
@@ -174,7 +187,17 @@
 }
 
 .meal-visual.snack {
+  color: #fff;
   background: #303034;
+}
+
+.meal-visual.snack .meal-visual__content p {
+  color: rgb(255 255 255 / 72%);
+}
+
+.meal-visual.snack .pill--soft {
+  color: #1d1d1f;
+  background: rgb(255 255 255 / 82%);
 }
 
 .meal-visual__content {

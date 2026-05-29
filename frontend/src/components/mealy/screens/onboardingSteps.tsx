@@ -1,29 +1,33 @@
-import type { MealyCore } from "../controller/useMealyCommands"
-import { formatActivity, formatGoal } from "../formatters"
-import { useI18n } from "../i18n"
-import type { ActivityLevel, Gender, Goal } from "../types"
+import type { MealyCore } from "../controller/useMealyCommands";
+import { formatActivity, formatGoal } from "../formatters";
+import { useI18n } from "../i18n";
+import type { ActivityLevel, Gender, Goal } from "../types";
 
 export type OnboardingCore = Pick<
   MealyCore,
   "authMode" | "onboardingForm" | "onboardingStep" | "updateOnboarding"
->
+>;
 
 export function StepBody({ core }: { core: OnboardingCore }) {
-  if (core.onboardingStep === 1) return <AccountStep core={core} />
-  if (core.authMode !== "register") return null
-  if (core.onboardingStep === 2) return <BodyStep core={core} />
-  if (core.onboardingStep === 3) return <GoalStep core={core} />
-  return <RestrictionsStep core={core} />
+  if (core.onboardingStep === 1) return <AccountStep core={core} />;
+  if (core.authMode !== "register") return null;
+  if (core.onboardingStep === 2) return <BodyStep core={core} />;
+  if (core.onboardingStep === 3) return <GoalStep core={core} />;
+  return <RestrictionsStep core={core} />;
 }
 
 function AccountStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n()
+  const { t } = useI18n();
 
   return (
     <>
       <Copy
         eyebrow={t("onboarding.account")}
-        title={core.authMode === "login" ? t("onboarding.savedProfile") : t("onboarding.basics")}
+        title={
+          core.authMode === "login"
+            ? t("onboarding.savedProfile")
+            : t("onboarding.basics")
+        }
       />
       <TextField
         core={core}
@@ -40,24 +44,44 @@ function AccountStep({ core }: { core: OnboardingCore }) {
         placeholder={t("onboarding.passwordPlaceholder")}
       />
     </>
-  )
+  );
 }
 
 function BodyStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n()
+  const { t } = useI18n();
 
   return (
     <>
-      <Copy eyebrow={t("onboarding.bodyMetrics")} title={t("onboarding.cleanInputs")} />
+      <Copy
+        eyebrow={t("onboarding.bodyMetrics")}
+        title={t("onboarding.cleanInputs")}
+      />
       <div className="field-grid">
-        <TextField core={core} field="age" label={t("onboarding.age")} type="number" />
-        <TextField core={core} field="weight_kg" label={t("onboarding.weight")} type="number" />
-        <TextField core={core} field="height_cm" label={t("onboarding.height")} type="number" />
+        <TextField
+          core={core}
+          field="age"
+          label={t("onboarding.age")}
+          type="number"
+        />
+        <TextField
+          core={core}
+          field="weight_kg"
+          label={t("onboarding.weight")}
+          type="number"
+        />
+        <TextField
+          core={core}
+          field="height_cm"
+          label={t("onboarding.height")}
+          type="number"
+        />
         <label className="field">
           <span>{t("onboarding.gender")}</span>
           <select
             value={core.onboardingForm.gender}
-            onChange={(event) => core.updateOnboarding("gender", event.target.value as Gender)}
+            onChange={(event) =>
+              core.updateOnboarding("gender", event.target.value as Gender)
+            }
           >
             <option value="female">{t("onboarding.genderFemale")}</option>
             <option value="male">{t("onboarding.genderMale")}</option>
@@ -65,21 +89,27 @@ function BodyStep({ core }: { core: OnboardingCore }) {
         </label>
       </div>
     </>
-  )
+  );
 }
 
 function GoalStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n()
+  const { t } = useI18n();
 
   return (
     <>
-      <Copy eyebrow={t("onboarding.goalRhythm")} title={t("onboarding.weekTone")} />
+      <Copy
+        eyebrow={t("onboarding.goalRhythm")}
+        title={t("onboarding.weekTone")}
+      />
       <label className="field">
         <span>{t("onboarding.activity")}</span>
         <select
           value={core.onboardingForm.activity_level}
           onChange={(event) =>
-            core.updateOnboarding("activity_level", event.target.value as ActivityLevel)
+            core.updateOnboarding(
+              "activity_level",
+              event.target.value as ActivityLevel,
+            )
           }
         >
           <option value="sedentary">{t("onboarding.lowActivity")}</option>
@@ -93,7 +123,9 @@ function GoalStep({ core }: { core: OnboardingCore }) {
         <span>{t("onboarding.goal")}</span>
         <select
           value={core.onboardingForm.goal}
-          onChange={(event) => core.updateOnboarding("goal", event.target.value as Goal)}
+          onChange={(event) =>
+            core.updateOnboarding("goal", event.target.value as Goal)
+          }
         >
           <option value="lose">{t("onboarding.fatLoss")}</option>
           <option value="maintain">{t("onboarding.maintain")}</option>
@@ -104,44 +136,50 @@ function GoalStep({ core }: { core: OnboardingCore }) {
         core={core}
         field="preferences"
         label={t("onboarding.preferences")}
-        placeholder="Mediterranean, high protein, fish"
+        placeholder={t("onboarding.preferencesPlaceholder")}
       />
     </>
-  )
+  );
 }
 
 function RestrictionsStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n()
+  const { language, t } = useI18n();
 
   return (
     <>
-      <Copy eyebrow={t("onboarding.restrictionsReview")} title={t("onboarding.guardrails")} />
+      <Copy
+        eyebrow={t("onboarding.restrictionsReview")}
+        title={t("onboarding.guardrails")}
+      />
       <TextArea
         core={core}
         field="allergies"
         label={t("onboarding.allergies")}
-        placeholder="nuts, milk, eggs"
+        placeholder={t("onboarding.allergiesPlaceholder")}
       />
       <TextArea
         core={core}
         field="disliked_ingredients"
         label={t("onboarding.disliked")}
-        placeholder="broccoli, liver, onion"
+        placeholder={t("onboarding.dislikedPlaceholder")}
       />
       <TextArea
         core={core}
         field="diseases"
         label={t("onboarding.conditions")}
-        placeholder="gastritis, diabetes"
+        placeholder={t("onboarding.conditionsPlaceholder")}
       />
       <div className="review-card">
         <div>
-          <strong>{formatGoal(core.onboardingForm.goal)}</strong>
-          <span>{formatActivity(core.onboardingForm.activity_level)}</span>
+          <strong>{formatGoal(core.onboardingForm.goal, language)}</strong>
+          <span>
+            {formatActivity(core.onboardingForm.activity_level, language)}
+          </span>
         </div>
         <div>
           <strong>
-            {core.onboardingForm.weight_kg} kg / {core.onboardingForm.height_cm} cm
+            {core.onboardingForm.weight_kg} kg / {core.onboardingForm.height_cm}{" "}
+            cm
           </strong>
           <span>
             {core.onboardingForm.gender === "female"
@@ -151,7 +189,7 @@ function RestrictionsStep({ core }: { core: OnboardingCore }) {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function Copy({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -160,7 +198,7 @@ function Copy({ eyebrow, title }: { eyebrow: string; title: string }) {
       <span className="section-copy__eyebrow">{eyebrow}</span>
       <h2>{title}</h2>
     </div>
-  )
+  );
 }
 
 function TextField({
@@ -170,11 +208,11 @@ function TextField({
   placeholder,
   type,
 }: {
-  core: OnboardingCore
-  field: "email" | "password" | "age" | "weight_kg" | "height_cm"
-  label: string
-  placeholder?: string
-  type: string
+  core: OnboardingCore;
+  field: "email" | "password" | "age" | "weight_kg" | "height_cm";
+  label: string;
+  placeholder?: string;
+  type: string;
 }) {
   return (
     <label className="field">
@@ -186,7 +224,7 @@ function TextField({
         placeholder={placeholder}
       />
     </label>
-  )
+  );
 }
 
 function TextArea({
@@ -195,10 +233,10 @@ function TextArea({
   label,
   placeholder,
 }: {
-  core: OnboardingCore
-  field: "preferences" | "allergies" | "disliked_ingredients" | "diseases"
-  label: string
-  placeholder: string
+  core: OnboardingCore;
+  field: "preferences" | "allergies" | "disliked_ingredients" | "diseases";
+  label: string;
+  placeholder: string;
 }) {
   return (
     <label className="field">
@@ -209,5 +247,5 @@ function TextArea({
         placeholder={placeholder}
       />
     </label>
-  )
+  );
 }

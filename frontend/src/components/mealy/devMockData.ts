@@ -17,7 +17,7 @@ export function buildDevMockState() {
 
   const user: UserResponse = {
     id: MOCK_USER_ID,
-    email: "demo@mealy.local",
+    email: "demo@example.com",
     age: 30,
     weight_kg: 75,
     height_cm: 175,
@@ -128,13 +128,13 @@ function buildShoppingList(days: DayPlan[]): ShoppingItem[] {
 
 function buildMockObservability(days: DayPlan[], targetCalories: number): ObservabilityResponse {
   return {
-    source: "dev_mock",
-    summary: "Mock generation trace for frontend inspection.",
+    source: "derived_plan",
+    summary: "",
     steps: [
-      { key: "profile", status: "completed", message: "Demo profile loaded." },
-      { key: "catalog", status: "completed", message: "Recipe catalog matched to constraints." },
-      { key: "planner", status: "completed", message: "Seven-day rhythm assembled." },
-      { key: "validation", status: "completed", message: "Calories and macros checked." },
+      { key: "profile", status: "completed", message: "" },
+      { key: "catalog", status: "completed", message: "" },
+      { key: "planner", status: "completed", message: "" },
+      { key: "validation", status: "completed", message: "" },
     ],
     day_checks: days.map((day) => {
       const deviationKcal = Math.round(day.total_calories - targetCalories)

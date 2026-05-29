@@ -7,7 +7,7 @@ export const DEV_SKIP_ONBOARDING = import.meta.env.PUBLIC_DEV_SKIP_ONBOARDING ==
 export const DEV_AUTO_GENERATE_PLAN = import.meta.env.PUBLIC_DEV_AUTO_GENERATE_PLAN === "true"
 export const DEV_USE_MOCK_DATA =
   import.meta.env.DEV && import.meta.env.PUBLIC_DEV_USE_MOCK_DATA === "true"
-export const DEV_EMAIL = import.meta.env.PUBLIC_DEV_EMAIL ?? "demo@mealy.local"
+export const DEV_EMAIL = import.meta.env.PUBLIC_DEV_EMAIL ?? "demo@example.com"
 export const DEV_PASSWORD = import.meta.env.PUBLIC_DEV_PASSWORD ?? "demo123456"
 export const STORAGE_KEY = "mealy/mobile-session/v1"
 export const LEGACY_STORAGE_KEYS = ["nutri-agent/mobile-session/v2"]

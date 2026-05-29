@@ -153,7 +153,7 @@ export type Screen =
   | { name: "shopping" }
   | { name: "integrations" }
   | { name: "profile" }
-  | { name: "recipe"; recipeId: string }
+  | { name: "recipe"; recipeId: string; dayNumber?: number; mealType?: string }
 
 export type OnboardingForm = {
   email: string

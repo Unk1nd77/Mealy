@@ -1,3 +1,10 @@
+import { useI18n } from "../i18n"
+import {
+  formatObservabilityStatus,
+  formatObservabilityStepKey,
+  formatObservabilityStepMessage,
+  formatObservabilitySummary,
+} from "../observabilityFormatters"
 import type { ObservabilityResponse, QuickAction } from "../types"
 import { ChevronRightIcon, TimeIcon } from "./icons"
 
@@ -27,9 +34,18 @@ export function ObservabilityPanel({
   observability: ObservabilityResponse | null
   observabilityLoading: boolean
 }) {
+  const { t } = useI18n()
+
   if (!observability && !observabilityLoading) return null
-  const title = mode === "generation" ? "Building your plan" : "Plan check"
-  const eyebrow = mode === "generation" ? "Live status" : "Balance review"
+  const title =
+    mode === "generation"
+      ? t("observability.title.generation")
+      : t("observability.title.result")
+  const eyebrow =
+    mode === "generation"
+      ? t("observability.eyebrow.generation")
+      : t("observability.eyebrow.result")
+
   return (
     <section className="section-block observability-panel">
       <div className="section-heading">
@@ -41,24 +57,24 @@ export function ObservabilityPanel({
       {observabilityLoading ? (
         <div className="loading-card">
           <TimeIcon className="icon icon--brand" />
-          <span>Loading generation diagnostics...</span>
+          <span>{t("observability.loading")}</span>
         </div>
       ) : null}
       {observability ? (
         <>
           <div className="observability-summary">
-            <strong>{observability.summary}</strong>
-            <span>Calories, macros, and restrictions are reviewed before the plan is shown.</span>
+            <strong>{formatObservabilitySummary(observability, mode, t)}</strong>
+            <span>{t("observability.summaryHint")}</span>
           </div>
           <div className="observability-steps">
             {observability.steps.map((step) => (
               <div key={`${step.key}-${step.status}`} className="observability-step">
                 <div className={`observability-step__status is-${step.status}`}>
-                  {step.status.replaceAll("_", " ")}
+                  {formatObservabilityStatus(step.status, t)}
                 </div>
                 <div>
-                  <strong>{step.key.replaceAll("_", " ")}</strong>
-                  <p>{step.message}</p>
+                  <strong>{formatObservabilityStepKey(step.key, t)}</strong>
+                  <p>{formatObservabilityStepMessage(step, t)}</p>
                 </div>
               </div>
             ))}
@@ -67,16 +83,21 @@ export function ObservabilityPanel({
             <div className="observability-days">
               {observability.day_checks.map((dayCheck) => (
                 <div key={dayCheck.day_number} className="observability-day">
-                  <strong>Day {dayCheck.day_number}</strong>
+                  <strong>{t("observability.day", { count: dayCheck.day_number })}</strong>
                   <span>
-                    {Math.round(dayCheck.total_calories)} / {Math.round(dayCheck.target_calories)}{" "}
-                    kcal
+                    {Math.round(dayCheck.total_calories)} /{" "}
+                    {Math.round(dayCheck.target_calories)} {t("common.kcal")}
                   </span>
                   <span>
-                    Deviation {Math.round(dayCheck.deviation_kcal)} kcal ({dayCheck.deviation_pct}%)
+                    {t("observability.deviation", {
+                      kcal: Math.round(dayCheck.deviation_kcal),
+                      pct: dayCheck.deviation_pct,
+                    })}
                   </span>
                   <span className={dayCheck.within_target ? "is-good" : "is-warning"}>
-                    {dayCheck.within_target ? "Within target band" : "Needs review"}
+                    {dayCheck.within_target
+                      ? t("observability.withinTarget")
+                      : t("observability.needsReview")}
                   </span>
                 </div>
               ))}

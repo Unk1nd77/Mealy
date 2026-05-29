@@ -137,9 +137,19 @@
   }
 
   .home-hero__top h1 {
-    max-width: 12ch;
-    font-size: clamp(4rem, 6vw, 6.2rem);
-    letter-spacing: 0;
+    max-width: none;
+    font-size: clamp(2.8rem, 5vw, 4.6rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+  }
+
+  .home-hero__top {
+    padding-right: clamp(12px, 2vw, 24px);
+  }
+
+  .home-hero__bottom {
+    position: relative;
+    z-index: 1;
   }
 
   .today-focus {

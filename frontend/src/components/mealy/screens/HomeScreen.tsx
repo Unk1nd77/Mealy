@@ -1,28 +1,29 @@
-import "../../../styles/mealy/02-form-actions.css"
-import "../../../styles/mealy/02-form-panels.css"
-import "../../../styles/mealy/03-cards.css"
-import "../../../styles/mealy/04-generation.css"
-import "../../../styles/mealy/05-home-hero.css"
-import "../../../styles/mealy/05-home.css"
-import "../../../styles/mealy/06-charts.css"
-import "../../../styles/mealy/07-actions.css"
-import "../../../styles/mealy/08-meals.css"
-import "../../../styles/mealy/10-webapp.css"
-import "../../../styles/mealy/11-webapp-states-mobile.css"
-import "../../../styles/mealy/11-webapp-states.css"
+import "../../../styles/mealy/02-form-actions.css";
+import "../../../styles/mealy/02-form-panels.css";
+import "../../../styles/mealy/03-cards.css";
+import "../../../styles/mealy/04-generation.css";
+import "../../../styles/mealy/05-home-hero.css";
+import "../../../styles/mealy/05-home.css";
+import "../../../styles/mealy/06-charts.css";
+import "../../../styles/mealy/07-actions.css";
+import "../../../styles/mealy/08-meals.css";
+import "../../../styles/mealy/10-webapp.css";
+import "../../../styles/mealy/11-webapp-states-mobile.css";
+import "../../../styles/mealy/11-webapp-states.css";
 
-import { PLAN_DAYS } from "../config"
-import type { MealyCommands, MealyCore } from "../controller/useMealyCommands"
-import { formatGoal, formatMealType, formatPlanDayLabel } from "../formatters"
-import { CalendarIcon, CartIcon, RefreshIcon, ShareIcon, UserIcon } from "../ui/icons"
+import { PLAN_DAYS } from "../config";
+import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
+import { formatGoal, formatMealType, formatPlanDayLabel } from "../formatters";
+import { useI18n } from "../i18n";
+import { RefreshIcon, ShareIcon } from "../ui/icons";
 import {
   MacroBreakdownChart,
   MealCard,
   ObservabilityPanel,
   QuickActions,
   WeeklyCaloriesChart,
-} from "../ui/planWidgets"
-import { EmptyHomeScreen } from "./EmptyHomeScreen"
+} from "../ui/planWidgets";
+import { EmptyHomeScreen } from "./EmptyHomeScreen";
 
 type HomeCore = Pick<
   MealyCore,
@@ -39,50 +40,64 @@ type HomeCore = Pick<
   | "todayPlan"
   | "todayProgress"
   | "user"
->
+>;
 
-type HomeCommands = Pick<MealyCommands, "openCalendarExport" | "regenerateWeek">
+type HomeCommands = Pick<
+  MealyCommands,
+  "openCalendarExport" | "regenerateWeek"
+>;
 
-export function HomeScreen({ commands, core }: { commands: HomeCommands; core: HomeCore }) {
+export function HomeScreen({
+  commands,
+  core,
+}: {
+  commands: HomeCommands;
+  core: HomeCore;
+}) {
+  const { language, t } = useI18n();
+
   if (!core.planData || !core.todayPlan) {
-    return <EmptyHomeScreen commands={commands} core={core} />
+    return <EmptyHomeScreen commands={commands} core={core} />;
+  }
+
+  if (core.planData.days.length < PLAN_DAYS) {
+    return (
+      <section className="screen-card">
+        <div className="empty-state">
+          <h3>
+            {t("week.shortPlanTitle", { count: core.planData.days.length })}
+          </h3>
+          <p>{t("week.shortPlanCopy")}</p>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={commands.regenerateWeek}
+          >
+            {t("week.regenerate")}
+          </button>
+        </div>
+      </section>
+    );
   }
 
   const actions = [
     {
-      label: "Weekly Plan",
-      description: `Review all ${PLAN_DAYS} generated days and switch by date.`,
-      icon: <CalendarIcon className="icon" />,
-      onClick: () => core.pushScreen({ name: "weekly" }),
-    },
-    {
-      label: "Shopping List",
-      description: "See the aggregated grocery list for the full week.",
-      icon: <CartIcon className="icon" />,
-      onClick: () => core.pushScreen({ name: "shopping" }),
-    },
-    {
-      label: "System Integrations",
-      description: "Send the plan to Calendar, Files, Notes, or the system share sheet.",
+      label: t("home.actionIntegrations"),
+      description: t("home.actionIntegrationsDesc"),
       icon: <ShareIcon className="icon" />,
       onClick: () => core.pushScreen({ name: "integrations" }),
     },
     {
-      label: "Profile",
-      description: "Update goals, dislikes, allergies, and activity.",
-      icon: <UserIcon className="icon" />,
-      onClick: () => core.pushScreen({ name: "profile" }),
-    },
-    {
-      label: "Refresh Week",
-      description: "Run the planner again with your current constraints.",
+      label: t("home.actionRefresh"),
+      description: t("home.actionRefreshDesc"),
       icon: <RefreshIcon className="icon" />,
       onClick: commands.regenerateWeek,
     },
-  ]
-  const nextMeal = core.todayPlan.meals[0]
-  const prepMeal = core.todayPlan.meals[1] ?? nextMeal
-  const remainingCalories = Math.max(Math.round(core.dailyTarget - core.todayCalories), 0)
+  ];
+  const nextMeal = core.todayPlan.meals[0];
+  const prepMeal = core.todayPlan.meals[1] ?? nextMeal;
+  const overBudget = Math.round(core.todayCalories - core.dailyTarget);
+  const remainingCalories = Math.round(core.dailyTarget - core.todayCalories);
 
   return (
     <section className="screen-card screen-card--home">
@@ -90,13 +105,17 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
         <div className="home-hero__top">
           <div>
             <div className="eyebrow eyebrow--light">
-              Today · {formatPlanDayLabel(core.planRecord, core.todayIndex)}
+              {t("nav.today")} ·{" "}
+              {formatPlanDayLabel(core.planRecord, core.todayIndex, language)}
             </div>
-            <h1>Today is already planned.</h1>
-            <p>Mealy keeps the day simple: next meal, daily energy, and what to prepare next.</p>
+            <h1>{t("home.todayPlanned")}</h1>
+            <p>{t("home.heroCopy")}</p>
           </div>
           <span className="hero-badge">
-            {formatGoal(core.planData.user_profile?.goal || core.user?.goal)}
+            {formatGoal(
+              core.planData.user_profile?.goal || core.user?.goal,
+              language,
+            )}
           </span>
         </div>
         <div className="home-hero__bottom">
@@ -104,26 +123,44 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
             <div className="progress-cluster__value">{core.todayProgress}%</div>
             <div>
               <strong>
-                {Math.round(core.todayCalories)} / {Math.round(core.dailyTarget)} kcal
+                {Math.round(core.todayCalories)} /{" "}
+                {Math.round(core.dailyTarget)} {t("common.kcal")}
               </strong>
-              <p>{remainingCalories} kcal left in the day plan</p>
+              <p>
+                {overBudget > 0
+                  ? t("home.kcalOver", { count: overBudget })
+                  : t("home.kcalLeft", { count: remainingCalories })}
+              </p>
             </div>
           </div>
           <div className="progress-bar">
-            <span style={{ width: `${core.todayProgress}%` }} />
+            <span style={{ width: `${Math.min(core.todayProgress, 100)}%` }} />
           </div>
           <div className="hero-stats">
             <div>
               <strong>{core.todayPlan.meals.length}</strong>
-              <span>Meals</span>
+              <span>{t("common.meals")}</span>
             </div>
             <div>
-              <strong>{Math.round(core.todayPlan.total_protein)}g</strong>
-              <span>Protein</span>
+              <strong>
+                {Math.round(core.todayPlan.total_protein)}
+                {t("common.gram")}
+              </strong>
+              <span>{t("common.protein")}</span>
             </div>
             <div>
-              <strong>{Math.round(core.todayPlan.total_carbs)}g</strong>
-              <span>Carbs</span>
+              <strong>
+                {Math.round(core.todayPlan.total_fat)}
+                {t("common.gram")}
+              </strong>
+              <span>{t("common.fat")}</span>
+            </div>
+            <div>
+              <strong>
+                {Math.round(core.todayPlan.total_carbs)}
+                {t("common.gram")}
+              </strong>
+              <span>{t("common.carbs")}</span>
             </div>
           </div>
           <button
@@ -131,7 +168,7 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
             className="mini-link mini-link--light"
             onClick={commands.openCalendarExport}
           >
-            Add to Calendar
+            {t("home.addCalendar")}
           </button>
         </div>
       </div>
@@ -139,26 +176,50 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
         <section className="today-focus">
           <div className="section-heading section-heading--compact">
             <div>
-              <span className="section-heading__eyebrow">Next up</span>
+              <span className="section-heading__eyebrow">
+                {t("home.nextUp")}
+              </span>
               <h2>{nextMeal.title}</h2>
             </div>
-            <span className="today-focus__time">{nextMeal.time || "Flexible"}</span>
+            <span className="today-focus__time">
+              {nextMeal.time || t("home.flexible")}
+            </span>
           </div>
           <button
             type="button"
             className="next-meal"
-            onClick={() => core.pushScreen({ name: "recipe", recipeId: nextMeal.recipe_id })}
+            onClick={() => {
+              const screen = {
+                name: "recipe" as const,
+                recipeId: nextMeal.recipe_id,
+                mealType: nextMeal.type,
+              };
+              if (core.todayPlan?.day_number !== undefined) {
+                core.pushScreen({
+                  ...screen,
+                  dayNumber: core.todayPlan.day_number,
+                });
+              } else {
+                core.pushScreen(screen);
+              }
+            }}
           >
-            <span className="next-meal__type">{formatMealType(nextMeal.type)}</span>
-            <strong>{Math.round(nextMeal.calories)} kcal</strong>
+            <span className="next-meal__type">
+              {formatMealType(nextMeal.type, language)}
+            </span>
+            <strong>
+              {Math.round(nextMeal.calories)} {t("common.kcal")}
+            </strong>
             <span>
-              P {Math.round(nextMeal.protein)} · F {Math.round(nextMeal.fat)} · C{" "}
-              {Math.round(nextMeal.carbs)}
+              {t("macro.p")} {Math.round(nextMeal.protein)}
+              {t("common.gram")} · {t("macro.f")} {Math.round(nextMeal.fat)}
+              {t("common.gram")} · {t("macro.c")} {Math.round(nextMeal.carbs)}
+              {t("common.gram")}
             </span>
           </button>
           {prepMeal && prepMeal.recipe_id !== nextMeal.recipe_id ? (
             <p className="today-focus__prep">
-              Prepare next: <strong>{prepMeal.title}</strong>
+              {t("home.prepareNext")} <strong>{prepMeal.title}</strong>
             </p>
           ) : null}
         </section>
@@ -166,15 +227,17 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <span className="section-heading__eyebrow">Day rhythm</span>
-            <h2>Meals in the order they happen</h2>
+            <span className="section-heading__eyebrow">
+              {t("home.dayRhythm")}
+            </span>
+            <h2>{t("home.dayRhythmTitle")}</h2>
           </div>
           <button
             type="button"
             className="mini-link"
             onClick={() => core.pushScreen({ name: "weekly" })}
           >
-            Full week
+            {t("home.fullWeek")}
           </button>
         </div>
         <div className="day-rhythm">
@@ -183,15 +246,35 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
               key={`${meal.recipe_id}-${meal.type}`}
               type="button"
               className="rhythm-row"
-              onClick={() => core.pushScreen({ name: "recipe", recipeId: meal.recipe_id })}
+              onClick={() => {
+                const screen = {
+                  name: "recipe" as const,
+                  recipeId: meal.recipe_id,
+                  mealType: meal.type,
+                };
+                if (core.todayPlan?.day_number !== undefined) {
+                  core.pushScreen({
+                    ...screen,
+                    dayNumber: core.todayPlan.day_number,
+                  });
+                } else {
+                  core.pushScreen(screen);
+                }
+              }}
             >
-              <span className={`rhythm-row__dot rhythm-row__dot--${meal.type}`} />
-              <span className="rhythm-row__time">{meal.time || "Any time"}</span>
+              <span
+                className={`rhythm-row__dot rhythm-row__dot--${meal.type}`}
+              />
+              <span className="rhythm-row__time">
+                {meal.time || t("home.anyTime")}
+              </span>
               <span className="rhythm-row__title">
                 <strong>{meal.title}</strong>
-                <small>{formatMealType(meal.type)}</small>
+                <small>{formatMealType(meal.type, language)}</small>
               </span>
-              <span className="rhythm-row__energy">{Math.round(meal.calories)} kcal</span>
+              <span className="rhythm-row__energy">
+                {Math.round(meal.calories)} {t("common.kcal")}
+              </span>
             </button>
           ))}
         </div>
@@ -199,17 +282,33 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <span className="section-heading__eyebrow">Recipes</span>
-            <h2>Open a meal when you are ready to cook</h2>
+            <span className="section-heading__eyebrow">
+              {t("home.recipes")}
+            </span>
+            <h2>{t("home.recipesTitle")}</h2>
           </div>
         </div>
         <div className="meal-stack">
           {core.todayPlan.meals.map((meal) => (
             <MealCard
               key={`${meal.recipe_id}-${meal.type}`}
+              {...(core.todayPlan?.day_number !== undefined
+                ? { dayNumber: core.todayPlan.day_number }
+                : {})}
               meal={meal}
               mode="home"
-              onOpen={(recipeId) => core.pushScreen({ name: "recipe", recipeId })}
+              onOpen={(recipeId, mealType, dayNumber) => {
+                const screen = {
+                  name: "recipe" as const,
+                  recipeId,
+                  mealType,
+                };
+                if (dayNumber !== undefined) {
+                  core.pushScreen({ ...screen, dayNumber });
+                } else {
+                  core.pushScreen(screen);
+                }
+              }}
             />
           ))}
         </div>
@@ -222,8 +321,8 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
         />
         <MacroBreakdownChart
           day={core.todayPlan}
-          title="Macro balance for today"
-          eyebrow="Macro distribution"
+          title={t("home.macroTitle")}
+          eyebrow={t("home.macroEyebrow")}
         />
       </div>
       <ObservabilityPanel
@@ -234,12 +333,14 @@ export function HomeScreen({ commands, core }: { commands: HomeCommands; core: H
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <span className="section-heading__eyebrow">Quick actions</span>
-            <h2>Jump into the rest of the app</h2>
+            <span className="section-heading__eyebrow">
+              {t("home.quickActions")}
+            </span>
+            <h2>{t("home.quickActionsTitle")}</h2>
           </div>
         </div>
         <QuickActions actions={actions} />
       </section>
     </section>
-  )
+  );
 }

@@ -43,3 +43,110 @@
   color: var(--body-muted);
   font-size: 0.78rem;
 }
+
+.ingredient-row,
+.shopping-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.shopping-row--interactive {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  color: inherit;
+  text-align: left;
+}
+
+.shopping-check {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--canvas);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.shopping-check.is-checked {
+  border-color: var(--primary);
+  background:
+    var(--primary)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M1.5 5.2 4.4 8.1 10.5 1.9'/%3E%3C/svg%3E")
+    center / 12px 10px no-repeat;
+}
+
+.shopping-row.is-checked {
+  opacity: 0.72;
+}
+
+.shopping-row.is-checked strong {
+  text-decoration: line-through;
+}
+
+.ingredient-row div,
+.shopping-row div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ingredient-row strong,
+.shopping-row strong {
+  overflow-wrap: anywhere;
+}
+
+.ingredient-row span,
+.shopping-row span {
+  color: var(--body-muted);
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.ingredient-row > span,
+.shopping-row > span {
+  flex: 0 0 auto;
+  min-width: 72px;
+  font-weight: 650;
+}
+
+.recipe-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: recipe-step;
+}
+
+.recipe-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-pearl);
+  color: var(--ink);
+}
+
+.recipe-steps li::before {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: var(--primary);
+  content: counter(recipe-step);
+  counter-increment: recipe-step;
+  font-size: 0.78rem;
+  font-weight: 700;
+}

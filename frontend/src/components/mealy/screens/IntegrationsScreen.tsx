@@ -1,11 +1,12 @@
-import "../../../styles/mealy/02-form-panels.css"
-import "../../../styles/mealy/03-cards.css"
-import "../../../styles/mealy/04-generation.css"
-import "../../../styles/mealy/07-actions.css"
+import "../../../styles/mealy/02-form-panels.css";
+import "../../../styles/mealy/03-cards.css";
+import "../../../styles/mealy/04-generation.css";
+import "../../../styles/mealy/07-actions.css";
 
-import { PLAN_DAYS } from "../config"
-import type { MealyCommands, MealyCore } from "../controller/useMealyCommands"
-import { ScreenHeader } from "../ui/ScreenHeader"
+import { PLAN_DAYS } from "../config";
+import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
+import { useI18n } from "../i18n";
+import { ScreenHeader } from "../ui/ScreenHeader";
 import {
   CalendarIcon,
   CartIcon,
@@ -13,12 +14,12 @@ import {
   ClipboardIcon,
   FileIcon,
   ShareIcon,
-} from "../ui/icons"
+} from "../ui/icons";
 
 type IntegrationsCore = Pick<
   MealyCore,
   "planData" | "planRecord" | "popScreen" | "shoppingList" | "shoppingLoading"
->
+>;
 type IntegrationsCommands = Pick<
   MealyCommands,
   | "copyPlanSummary"
@@ -26,81 +27,94 @@ type IntegrationsCommands = Pick<
   | "openCalendarExport"
   | "openShoppingListPdf"
   | "sharePlanSummary"
->
+>;
 
 export function IntegrationsScreen({
   commands,
   core,
 }: {
-  commands: IntegrationsCommands
-  core: IntegrationsCore
+  commands: IntegrationsCommands;
+  core: IntegrationsCore;
 }) {
-  const hasSystemShare = typeof navigator !== "undefined" && typeof navigator.share === "function"
+  const { t } = useI18n();
+  const hasSystemShare =
+    typeof navigator !== "undefined" && typeof navigator.share === "function";
+
   const actions = [
     {
-      label: "Local Calendar",
-      description: "Download an iCalendar file with every meal time.",
-      meta: core.planRecord?.id ? "ICS export" : "Needs an active plan",
+      label: t("integrations.localCalendar"),
+      description: t("integrations.localCalendarDesc"),
+      meta: core.planRecord?.id
+        ? t("integrations.localCalendarMeta")
+        : t("integrations.needsPlan"),
       icon: <CalendarIcon className="icon" />,
       onClick: commands.openCalendarExport,
       disabled: !core.planRecord?.id,
     },
     {
-      label: "System Share",
-      description: "Send the week summary through the mobile share sheet.",
-      meta: hasSystemShare ? "Native share sheet" : "Clipboard fallback",
+      label: t("integrations.systemShare"),
+      description: t("integrations.systemShareDesc"),
+      meta: hasSystemShare
+        ? t("integrations.nativeShare")
+        : t("integrations.clipboardFallback"),
       icon: <ShareIcon className="icon" />,
       onClick: () => void commands.sharePlanSummary(),
       disabled: !core.planData,
     },
     {
-      label: "Notes and Chat",
-      description: "Copy a readable day-by-day summary.",
-      meta: "Plain text",
+      label: t("integrations.notesChat"),
+      description: t("integrations.notesChatDesc"),
+      meta: t("integrations.plainText"),
       icon: <ClipboardIcon className="icon" />,
       onClick: () => void commands.copyPlanSummary(),
       disabled: !core.planData,
     },
     {
-      label: "Shopping PDF",
-      description: "Save a printable grocery list.",
-      meta: "PDF export",
+      label: t("integrations.shoppingPdf"),
+      description: t("integrations.shoppingPdfDesc"),
+      meta: t("integrations.pdfExport"),
       icon: <FileIcon className="icon" />,
       onClick: commands.openShoppingListPdf,
       disabled: !core.planRecord?.id,
     },
     {
-      label: "Grocery Clipboard",
-      description: "Copy the aggregated shopping list.",
+      label: t("integrations.groceryClipboard"),
+      description: t("integrations.groceryClipboardDesc"),
       meta: core.shoppingList?.length
-        ? `${core.shoppingList.length} items ready`
-        : "Loads on demand",
+        ? t("integrations.itemsReady", { count: core.shoppingList.length })
+        : t("integrations.loadsOnDemand"),
       icon: <CartIcon className="icon" />,
       onClick: () => void commands.copyShoppingItems(),
       disabled: !core.planRecord?.id || core.shoppingLoading,
     },
-  ]
+  ];
 
   return (
     <section className="screen-card screen-card--integrations">
       <ScreenHeader
-        title="Integrations"
-        subtitle="Local-first exports for the systems you already use on your phone."
+        title={t("integrations.title")}
+        subtitle={t("integrations.subtitle")}
         onBack={core.popScreen}
       />
       <div className="integration-summary">
         <div>
-          <span className="section-heading__eyebrow">Connected plan</span>
-          <h2>{core.planData ? `${PLAN_DAYS}-day meal plan` : "No active plan"}</h2>
+          <span className="section-heading__eyebrow">
+            {t("integrations.connectedPlan")}
+          </span>
+          <h2>
+            {core.planData
+              ? t("integrations.planDays", { count: PLAN_DAYS })
+              : t("integrations.noPlan")}
+          </h2>
           <p>
             {core.planData
-              ? "Calendar, share, file, and clipboard actions use the same saved plan."
-              : "Generate a plan first, then exports will become available here."}
+              ? t("integrations.planReady")
+              : t("integrations.planMissing")}
           </p>
         </div>
         <div className="integration-summary__metric">
           <strong>{core.planData?.days.length ?? 0}</strong>
-          <span>days</span>
+          <span>{t("integrations.days")}</span>
         </div>
       </div>
       <div className="integration-list">
@@ -123,12 +137,9 @@ export function IntegrationsScreen({
         ))}
       </div>
       <div className="disclaimer-banner">
-        <strong>Local calendar note</strong>
-        <p>
-          Browsers cannot silently write into a local calendar. Mealy exports a standard `.ics`
-          file, and the calendar app handles the import confirmation.
-        </p>
+        <strong>{t("integrations.calendarNote")}</strong>
+        <p>{t("integrations.calendarNoteText")}</p>
       </div>
     </section>
-  )
+  );
 }

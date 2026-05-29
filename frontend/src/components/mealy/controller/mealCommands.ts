@@ -1,9 +1,9 @@
 import type { MealyCore } from "./useMealyCommands"
 
 export function createMealCommands(core: MealyCore) {
-  async function swapCurrentMeal(recipeId: string) {
+  async function swapCurrentMeal(recipeId: string, dayNumber?: number, mealType?: string) {
     if (!core.planRecord?.id) return
-    const context = core.getMealContext(recipeId)
+    const context = core.getMealContext(recipeId, dayNumber, mealType)
     if (!context) return
     core.patch({ mealActionLoading: "swap", errorNotice: "", globalNotice: "" })
     try {
@@ -14,7 +14,13 @@ export function createMealCommands(core: MealyCore) {
       )
       const nextMeal = payload.day.meals.find((meal) => meal.type === context.meal.type)
       await core.refreshPlan(core.planRecord.id)
-      if (nextMeal) core.replaceCurrentScreen({ name: "recipe", recipeId: nextMeal.recipe_id })
+      if (nextMeal)
+        core.replaceCurrentScreen({
+          name: "recipe",
+          recipeId: nextMeal.recipe_id,
+          dayNumber: context.day.day_number,
+          mealType: nextMeal.type,
+        })
       core.patch({ globalNotice: "Meal swapped and daily totals recalculated." })
     } catch (error) {
       core.patch({
@@ -25,9 +31,9 @@ export function createMealCommands(core: MealyCore) {
     }
   }
 
-  async function cancelCurrentMeal(recipeId: string) {
+  async function cancelCurrentMeal(recipeId: string, dayNumber?: number, mealType?: string) {
     if (!core.planRecord?.id) return
-    const context = core.getMealContext(recipeId)
+    const context = core.getMealContext(recipeId, dayNumber, mealType)
     if (!context) return
     core.patch({ mealActionLoading: "cancel", errorNotice: "", globalNotice: "" })
     try {
