@@ -1,13 +1,3 @@
-import "../../../styles/mealy/02-form-actions.css";
-import "../../../styles/mealy/02-form-panels.css";
-import "../../../styles/mealy/03-cards.css";
-import "../../../styles/mealy/04-generation.css";
-import "../../../styles/mealy/07-actions.css";
-import "../../../styles/mealy/11-webapp-states-mobile.css";
-import "../../../styles/mealy/11-webapp-states.css";
-import "../../../styles/mealy/13-week-calendar.css";
-import "../../../styles/mealy/14-week-calendar-mobile.css";
-
 import { PLAN_DAYS } from "../config";
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatMealType, formatPlanDayLabel } from "../formatters";

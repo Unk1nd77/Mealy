@@ -1,13 +1,5 @@
 import { useState } from "react";
 
-import "../../../styles/mealy/02-form-actions.css";
-import "../../../styles/mealy/02-form-panels.css";
-import "../../../styles/mealy/03-cards.css";
-import "../../../styles/mealy/04-generation.css";
-import "../../../styles/mealy/07-actions.css";
-import "../../../styles/mealy/08-meals.css";
-import "../../../styles/mealy/09-detail.css";
-
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatAmount, formatMealType, mealVisualClass } from "../formatters";
 import { useI18n } from "../i18n";

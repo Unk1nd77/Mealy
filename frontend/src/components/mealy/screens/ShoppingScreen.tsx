@@ -1,11 +1,5 @@
 import { useState } from "react";
 
-import "../../../styles/mealy/02-form-actions.css";
-import "../../../styles/mealy/02-form-panels.css";
-import "../../../styles/mealy/03-cards.css";
-import "../../../styles/mealy/04-generation.css";
-import "../../../styles/mealy/07-actions.css";
-
 import { PLAN_DAYS } from "../config";
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatAmount } from "../formatters";

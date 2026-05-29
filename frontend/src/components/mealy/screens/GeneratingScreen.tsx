@@ -1,9 +1,3 @@
-import "../../../styles/mealy/02-form-actions.css";
-import "../../../styles/mealy/02-form-panels.css";
-import "../../../styles/mealy/03-cards.css";
-import "../../../styles/mealy/04-generation-run.css";
-import "../../../styles/mealy/04-generation.css";
-
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { useI18n } from "../i18n";
 import { CheckIcon, SparkIcon } from "../ui/icons";

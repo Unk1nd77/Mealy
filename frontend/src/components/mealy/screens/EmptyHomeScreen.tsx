@@ -1,10 +1,3 @@
-import "../../../styles/mealy/02-form-actions.css"
-import "../../../styles/mealy/02-form-panels.css"
-import "../../../styles/mealy/03-cards.css"
-import "../../../styles/mealy/07-actions.css"
-import "../../../styles/mealy/11-webapp-states-mobile.css"
-import "../../../styles/mealy/11-webapp-states.css"
-
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands"
 import { useI18n } from "../i18n"
 import { ScreenHeader } from "../ui/ScreenHeader"
