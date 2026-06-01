@@ -1,6 +1,6 @@
 import { useReducer, useRef } from "react";
 
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import { createMealyClient } from "../client";
 import { normalizeObservabilityStep, normalizeTaskStatus } from "../api";
 import {
@@ -31,7 +31,7 @@ export function useMealyController() {
   const clientFor = (token?: string | null) =>
     createMealyClient(token === undefined ? state.accessToken : token);
   const derived = deriveMealyState(state);
-  const { t } = useI18n();
+  const { t } = useText();
   const { planData } = derived;
   function notice(globalNotice = "", errorNotice = "") {
     patch({ globalNotice, errorNotice });
@@ -176,7 +176,7 @@ export function useMealyController() {
           errorNotice:
             error instanceof Error
               ? error.message
-              : "Could not load generation trace.",
+              : "Не удалось загрузить диагностику генерации.",
         });
     } finally {
       if (aliveRef.current) patch({ observabilityLoading: false });
@@ -193,7 +193,7 @@ export function useMealyController() {
           errorNotice:
             error instanceof Error
               ? error.message
-              : "Could not load shopping list.",
+              : "Не удалось загрузить список покупок.",
         });
     } finally {
       if (aliveRef.current) patch({ shoppingLoading: false });

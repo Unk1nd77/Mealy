@@ -4,7 +4,7 @@ import { BottomNav, shouldShowBottomNav } from "./mealy/BottomNav"
 import { useMealyCommands } from "./mealy/controller/useMealyCommands"
 import { useMealyController } from "./mealy/controller/useMealyController"
 import { useMealyLifecycle } from "./mealy/controller/useMealyLifecycle"
-import { I18nProvider, LanguageToggle, useI18n } from "./mealy/i18n"
+import { useText } from "./mealy/text"
 import { BootScreen } from "./mealy/screens/BootScreen"
 
 const GeneratingScreen = lazy(() =>
@@ -14,11 +14,6 @@ const GeneratingScreen = lazy(() =>
 )
 const HomeScreen = lazy(() =>
   import("./mealy/screens/HomeScreen").then((module) => ({ default: module.HomeScreen })),
-)
-const IntegrationsScreen = lazy(() =>
-  import("./mealy/screens/IntegrationsScreen").then((module) => ({
-    default: module.IntegrationsScreen,
-  })),
 )
 const OnboardingScreen = lazy(() =>
   import("./mealy/screens/OnboardingScreen").then((module) => ({
@@ -39,17 +34,13 @@ const WeeklyScreen = lazy(() =>
 )
 
 export default function MealyApp() {
-  return (
-    <I18nProvider>
-      <MealyAppContent />
-    </I18nProvider>
-  )
+  return <MealyAppContent />
 }
 
 function MealyAppContent() {
   const core = useMealyController()
   const commands = useMealyCommands(core)
-  const { t } = useI18n()
+  const { t } = useText()
   const notice = formatNotice(core.errorNotice, core.globalNotice, t)
   useMealyLifecycle(core)
 
@@ -75,7 +66,6 @@ function MealyAppContent() {
           <CurrentScreen commands={commands} core={core} />
         </Suspense>
         <BottomNav core={core} />
-        <LanguageToggle />
       </div>
     </main>
   )
@@ -84,7 +74,7 @@ function MealyAppContent() {
 function formatNotice(
   errorNotice: string,
   globalNotice: string,
-  t: ReturnType<typeof useI18n>["t"],
+  t: ReturnType<typeof useText>["t"],
 ) {
   if (errorNotice) {
     if (isNetworkLoadError(errorNotice)) {
@@ -125,9 +115,7 @@ function CurrentScreen({
     case "weekly":
       return <WeeklyScreen commands={commands} core={core} />
     case "shopping":
-      return <ShoppingScreen commands={commands} core={core} />
-    case "integrations":
-      return <IntegrationsScreen commands={commands} core={core} />
+      return <ShoppingScreen core={core} />
     case "profile":
       return <ProfileScreen commands={commands} core={core} />
     case "recipe": {

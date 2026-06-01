@@ -1,6 +1,6 @@
 import { ArrowLeftIcon } from "./icons"
 import { APP_NAME } from "../config"
-import { useI18n } from "../i18n"
+import { useText } from "../text"
 
 export function ScreenHeader({
   title,
@@ -11,7 +11,7 @@ export function ScreenHeader({
   subtitle?: string
   onBack?: () => void
 }) {
-  const { t } = useI18n()
+  const { t } = useText()
 
   return (
     <header className="screen-header">

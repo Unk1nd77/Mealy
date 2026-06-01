@@ -1,5 +1,7 @@
+import type { FormEvent } from "react";
+
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import { StepBody, type OnboardingCore } from "./onboardingSteps";
 
 type OnboardingCommands = Pick<
@@ -20,7 +22,20 @@ export function OnboardingScreen({
   core: OnboardingShellCore;
 }) {
   const canGoBack = core.authMode === "register" && core.onboardingStep > 1;
-  const { t } = useI18n();
+  const { t } = useText();
+
+  function handleSubmit(event: FormEvent) {
+    if (core.authMode === "login") {
+      void commands.loginExistingUser(event);
+      return;
+    }
+    if (core.onboardingStep < core.onboardingSteps) {
+      event.preventDefault();
+      commands.goToNextStep();
+      return;
+    }
+    void commands.createUserAndGenerate(event);
+  }
 
   return (
     <section className="screen-card screen-card--onboarding">
@@ -29,7 +44,7 @@ export function OnboardingScreen({
           <strong>Mealy</strong>
           <span>{t("onboarding.brandSub")}</span>
         </div>
-        <div className="mode-switch" role="tablist" aria-label="Account flow">
+        <div className="mode-switch" role="tablist" aria-label="Сценарий аккаунта">
           {(["register", "login"] as const).map((mode) => (
             <button
               key={mode}
@@ -55,11 +70,7 @@ export function OnboardingScreen({
           </div>
         </aside>
         <form
-          onSubmit={
-            core.authMode === "login"
-              ? commands.loginExistingUser
-              : commands.createUserAndGenerate
-          }
+          onSubmit={handleSubmit}
           className="form-shell onboarding-panel"
         >
           <div className="step-track">

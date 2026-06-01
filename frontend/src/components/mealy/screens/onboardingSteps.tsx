@@ -1,6 +1,6 @@
 import type { MealyCore } from "../controller/useMealyCommands";
 import { formatActivity, formatGoal } from "../formatters";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import type { ActivityLevel, Gender, Goal } from "../types";
 
 export type OnboardingCore = Pick<
@@ -17,7 +17,7 @@ export function StepBody({ core }: { core: OnboardingCore }) {
 }
 
 function AccountStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n();
+  const { t } = useText();
 
   return (
     <>
@@ -48,7 +48,7 @@ function AccountStep({ core }: { core: OnboardingCore }) {
 }
 
 function BodyStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n();
+  const { t } = useText();
 
   return (
     <>
@@ -93,7 +93,7 @@ function BodyStep({ core }: { core: OnboardingCore }) {
 }
 
 function GoalStep({ core }: { core: OnboardingCore }) {
-  const { t } = useI18n();
+  const { t } = useText();
 
   return (
     <>
@@ -143,7 +143,7 @@ function GoalStep({ core }: { core: OnboardingCore }) {
 }
 
 function RestrictionsStep({ core }: { core: OnboardingCore }) {
-  const { language, t } = useI18n();
+  const { t } = useText();
 
   return (
     <>
@@ -171,9 +171,9 @@ function RestrictionsStep({ core }: { core: OnboardingCore }) {
       />
       <div className="review-card">
         <div>
-          <strong>{formatGoal(core.onboardingForm.goal, language)}</strong>
+          <strong>{formatGoal(core.onboardingForm.goal)}</strong>
           <span>
-            {formatActivity(core.onboardingForm.activity_level, language)}
+            {formatActivity(core.onboardingForm.activity_level)}
           </span>
         </div>
         <div>

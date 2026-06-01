@@ -30,7 +30,7 @@ export function normalizeObservabilityStep(
   return {
     key: step.key?.trim() || `step-${index + 1}`,
     status: step.status?.trim().toLowerCase() || "completed",
-    message: step.message?.trim() || "Generation stage completed.",
+    message: step.message?.trim() || "Этап генерации завершён.",
   }
 }
 

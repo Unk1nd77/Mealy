@@ -5,55 +5,45 @@ import type {
   PlanResponse,
   ShoppingItem,
 } from "./types";
-import type { Language } from "./i18n";
 
-export function formatGoal(
-  goal: Goal | string | undefined,
-  language: Language = "en",
-): string {
+export function formatGoal(goal: Goal | string | undefined): string {
   switch (goal) {
     case "lose":
-      return language === "ru" ? "Снижение веса" : "Fat loss";
+      return "Снижение веса";
     case "gain":
-      return language === "ru" ? "Набор мышц" : "Muscle gain";
+      return "Набор мышц";
     default:
-      return language === "ru" ? "Баланс" : "Balance";
+      return "Баланс";
   }
 }
 
-export function formatActivity(
-  activity: ActivityLevel | string | undefined,
-  language: Language = "en",
-): string {
+export function formatActivity(activity: ActivityLevel | string | undefined): string {
   switch (activity) {
     case "sedentary":
-      return language === "ru" ? "Низкая активность" : "Low activity";
+      return "Низкая активность";
     case "light":
-      return language === "ru" ? "Лёгкая активность" : "Light activity";
+      return "Лёгкая активность";
     case "active":
-      return language === "ru" ? "Высокая активность" : "High activity";
+      return "Высокая активность";
     case "very_active":
-      return language === "ru" ? "Очень высокая активность" : "Very active";
+      return "Очень высокая активность";
     default:
-      return language === "ru" ? "Средняя активность" : "Moderate activity";
+      return "Средняя активность";
   }
 }
 
-export function formatMealType(
-  type: string,
-  language: Language = "en",
-): string {
+export function formatMealType(type: string): string {
   switch (type) {
     case "breakfast":
-      return language === "ru" ? "Завтрак" : "Breakfast";
+      return "Завтрак";
     case "lunch":
-      return language === "ru" ? "Обед" : "Lunch";
+      return "Обед";
     case "dinner":
-      return language === "ru" ? "Ужин" : "Dinner";
+      return "Ужин";
     case "snack":
-      return language === "ru" ? "Перекус" : "Snack";
+      return "Перекус";
     case "second_snack":
-      return language === "ru" ? "Поздний перекус" : "Late snack";
+      return "Поздний перекус";
     default:
       return type.replaceAll("_", " ");
   }
@@ -74,9 +64,9 @@ export function mealVisualClass(type: string): string {
 }
 
 export const MACRO_SERIES = [
-  { key: "protein", label: "Protein", short: "P", color: "#30d158" },
-  { key: "fat", label: "Fat", short: "F", color: "#ff9f0a" },
-  { key: "carbs", label: "Carbs", short: "C", color: "#ff2d55" },
+  { key: "protein", label: "Белок", short: "Б", color: "#30d158" },
+  { key: "fat", label: "Жиры", short: "Ж", color: "#ff9f0a" },
+  { key: "carbs", label: "Углеводы", short: "У", color: "#ff2d55" },
 ] as const;
 
 export function clamp(value: number, min: number, max: number): number {
@@ -96,10 +86,10 @@ export function getTodayIndex(plan: PlanResponse | null): number {
   return clamp(diff + 1, 1, totalDays);
 }
 
-export function formatShortDate(offset = 0, language: Language = "en"): string {
+export function formatShortDate(offset = 0): string {
   const date = new Date();
   date.setDate(date.getDate() + offset);
-  return new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "en-US", {
+  return new Intl.DateTimeFormat("ru-RU", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -109,89 +99,53 @@ export function formatShortDate(offset = 0, language: Language = "en"): string {
 export function formatPlanDayLabel(
   plan: PlanResponse | null,
   dayNumber: number,
-  language: Language = "en",
 ): string {
   if (!plan?.start_date) {
-    return formatShortDate(dayNumber - 1, language);
+    return formatShortDate(dayNumber - 1);
   }
 
   const date = new Date(`${plan.start_date}T00:00:00`);
   date.setDate(date.getDate() + dayNumber - 1);
-  return new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "en-US", {
+  return new Intl.DateTimeFormat("ru-RU", {
     weekday: "short",
     month: "short",
     day: "numeric",
   }).format(date);
 }
 
-const COUNTABLE_PRODUCE: Array<{
-  match: RegExp;
-  grams: number;
-  en: string;
-  ru: string;
-}> = [
-  { match: /лимон|lemon/i, grams: 90, en: "pc", ru: "шт" },
-  { match: /томат|помидор|tomato/i, grams: 120, en: "pc", ru: "шт" },
-  { match: /банан|banana/i, grams: 120, en: "pc", ru: "шт" },
-  { match: /авокадо|avocado/i, grams: 170, en: "pc", ru: "шт" },
-  { match: /яблок|apple/i, grams: 170, en: "pc", ru: "шт" },
-  { match: /лук(?!.*зел)|onion/i, grams: 100, en: "pc", ru: "шт" },
-  { match: /перец|pepper/i, grams: 160, en: "pc", ru: "шт" },
-  { match: /огур|cucumber/i, grams: 120, en: "pc", ru: "шт" },
-  { match: /кабач|zucchini/i, grams: 250, en: "pc", ru: "шт" },
-  { match: /баклажан|eggplant/i, grams: 250, en: "pc", ru: "шт" },
-];
-
-function roundTo(value: number, step: number): number {
-  return Math.ceil(value / step) * step;
-}
-
-function unitLabel(unit: string, language: Language): string {
-  if (unit === "piece" || unit === "pc" || unit === "pcs")
-    return language === "ru" ? "шт" : "pc";
-  if (unit === "slice") return language === "ru" ? "ломт." : "slice";
-  if (unit === "tbsp") return language === "ru" ? "ст. л." : "tbsp";
-  if (unit === "tsp") return language === "ru" ? "ч. л." : "tsp";
+function unitLabel(unit: string): string {
+  if (unit === "piece" || unit === "pc" || unit === "pcs") return "шт";
+  if (unit === "slice") return "ломт.";
+  if (unit === "tbsp") return "ст. л.";
+  if (unit === "tsp") return "ч. л.";
   return unit;
 }
 
 export function formatAmount(
   item: Ingredient | ShoppingItem,
-  language: Language = "en",
   groceryMode = false,
 ): string {
   const unit = item.unit.toLowerCase();
   const amount = Number(item.amount) || 0;
 
   if (groceryMode && unit === "g") {
-    const countable = COUNTABLE_PRODUCE.find((entry) =>
-      entry.match.test(item.name),
-    );
-    if (countable) {
-      const pieces = Math.max(1, Math.ceil(amount / countable.grams));
-      return `${pieces} ${language === "ru" ? countable.ru : countable.en}`;
-    }
-    if (
-      /творог|йогурт|сыр|паста|рис|греч|мука|фарш|chicken|beef|rice|flour|cheese/i.test(
-        item.name,
-      )
-    ) {
-      return `${roundTo(amount, amount >= 500 ? 100 : 50)} ${language === "ru" ? "г" : "g"}`;
-    }
+    return `${Math.round(amount)} г`;
+  }
+  if (groceryMode && unit === "ml") {
+    return `${Math.round(amount)} мл`;
   }
 
   if (unit === "g" && amount >= 1000) {
     const value = Math.round((amount / 1000) * 10) / 10;
-    return `${value} ${language === "ru" ? "кг" : "kg"}`;
+    return `${value} кг`;
   }
   if (unit === "ml" && amount >= 1000) {
     const value = Math.round((amount / 1000) * 10) / 10;
-    return `${value} ${language === "ru" ? "л" : "l"}`;
+    return `${value} л`;
   }
-  if (unit === "g")
-    return `${Math.round(amount)} ${language === "ru" ? "г" : "g"}`;
-  if (unit === "ml") return `${Math.round(amount)} ${unit}`;
+  if (unit === "g") return `${Math.round(amount)} г`;
+  if (unit === "ml") return `${Math.round(amount)} мл`;
   if (unit === "piece" || unit === "pc" || unit === "pcs" || unit === "slice")
-    return `${Math.round(amount)} ${unitLabel(unit, language)}`;
-  return `${Math.round(amount * 10) / 10} ${unitLabel(unit, language)}`;
+    return `${Math.round(amount)} ${unitLabel(unit)}`;
+  return `${Math.round(amount * 10) / 10} ${unitLabel(unit)}`;
 }

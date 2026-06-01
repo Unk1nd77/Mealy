@@ -1,7 +1,7 @@
-import { PLAN_DAYS } from "../config";
+import { API_BASE, PLAN_DAYS } from "../config";
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatMealType, formatPlanDayLabel } from "../formatters";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import type { DayPlan, MealItem } from "../types";
 import { EmptyHomeScreen } from "./EmptyHomeScreen";
 
@@ -16,10 +16,7 @@ type WeeklyCore = Pick<
   | "selectedDayNumber"
   | "user"
 >;
-type WeeklyCommands = Pick<
-  MealyCommands,
-  "openCalendarExport" | "regenerateWeek"
->;
+type WeeklyCommands = Pick<MealyCommands, "regenerateWeek">;
 
 function splitDayLabel(label: string) {
   const [weekday = label, date = ""] = label
@@ -43,7 +40,7 @@ export function WeeklyScreen({
   commands: WeeklyCommands;
   core: WeeklyCore;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useText();
   if (!core.planData)
     return <EmptyHomeScreen commands={commands} core={core} />;
   if (core.planData.days.length < PLAN_DAYS) {
@@ -70,32 +67,21 @@ export function WeeklyScreen({
       (day) => day.day_number === core.selectedDayNumber,
     ) ?? core.planData.days[0];
   if (!activeDay) return <EmptyHomeScreen commands={commands} core={core} />;
+  const calendarHref = core.planRecord
+    ? `${API_BASE}/api/plans/${core.planRecord.id}/calendar.ics`
+    : undefined;
 
   return (
     <section className="screen-card screen-card--week">
       <div className="section-toolbar section-toolbar--tight week-toolbar">
         <div className="toolbar-actions">
-          <button
-            type="button"
+          <a
+            href={calendarHref}
             className="mini-link week-action week-action--primary"
-            onClick={commands.regenerateWeek}
-          >
-            {t("week.regenerate")}
-          </button>
-          <button
-            type="button"
-            className="mini-link week-action week-action--secondary"
-            onClick={commands.openCalendarExport}
+            download={core.planRecord ? `mealy-plan-${core.planRecord.id}.ics` : undefined}
           >
             {t("week.calendar")}
-          </button>
-          <button
-            type="button"
-            className="mini-link week-action week-action--secondary week-toolbar__optional"
-            onClick={() => core.pushScreen({ name: "integrations" })}
-          >
-            {t("week.more")}
-          </button>
+          </a>
         </div>
       </div>
 
@@ -106,7 +92,7 @@ export function WeeklyScreen({
       >
         {core.planData.days.map((day) => {
           const label = splitDayLabel(
-            formatPlanDayLabel(core.planRecord, day.day_number, language),
+            formatPlanDayLabel(core.planRecord, day.day_number),
           );
           const isActive = day.day_number === activeDay.day_number;
           const caloriesDelta = Math.round(
@@ -143,7 +129,7 @@ export function WeeklyScreen({
                     key={`${day.day_number}-${meal.type}-${meal.recipe_id}`}
                   >
                     <i className={`meal-dot meal-dot--${meal.type}`} />
-                    {formatMealType(meal.type, language)}
+                    {formatMealType(meal.type)}
                   </span>
                 ))}
               </span>
@@ -158,11 +144,7 @@ export function WeeklyScreen({
             {t("week.day")} {activeDay.day_number}
           </p>
           <h3>
-            {formatPlanDayLabel(
-              core.planRecord,
-              activeDay.day_number,
-              language,
-            )}
+            {formatPlanDayLabel(core.planRecord, activeDay.day_number)}
           </h3>
           <div className="week-metrics">
             <div>
@@ -201,7 +183,7 @@ export function WeeklyScreen({
               <span className={`meal-dot meal-dot--${meal.type}`} />
               <span className="week-meal-row__main">
                 <strong>{meal.title}</strong>
-                <small>{formatMealType(meal.type, language)}</small>
+                <small>{formatMealType(meal.type)}</small>
               </span>
               <span className="week-meal-row__energy">
                 {Math.round(meal.calories)} {t("common.kcal")}

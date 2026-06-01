@@ -24,13 +24,11 @@
   font-size: 0.84rem;
 }
 
-.quick-actions,
 .meal-stack,
 .shopping-list,
 .ingredient-list,
 .observability-steps,
-.observability-days,
-.integration-list {
+.observability-days {
   display: flex;
   flex-direction: column;
   gap: 12px;

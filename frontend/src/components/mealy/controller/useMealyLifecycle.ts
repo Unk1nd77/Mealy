@@ -106,9 +106,4 @@ export function useMealyLifecycle(core: MealyCore) {
     void core.loadObservability(core.planRecord.id, core.accessToken)
   }, [core.planRecord?.id])
 
-  useEffect(() => {
-    if (!core.shoppingCopied) return
-    const timeout = window.setTimeout(() => core.patch({ shoppingCopied: false }), 1600)
-    return () => window.clearTimeout(timeout)
-  }, [core.shoppingCopied])
 }

@@ -7,7 +7,7 @@ type MealyClient = ReturnType<typeof createMealyClient>
 export async function resolveAuthUser(auth: AuthResponse, token: string | null) {
   if (auth.user) return auth.user
   if (!auth.user_id) {
-    throw new Error("Auth endpoint did not return a usable user payload.")
+    throw new Error("Сервер авторизации не вернул данные пользователя.")
   }
   return createMealyClient(token).getUser(auth.user_id)
 }

@@ -143,8 +143,7 @@ textarea {
   -webkit-overflow-scrolling: touch;
 }
 
-.screen-card--home,
-.screen-card--integrations {
+.screen-card--home {
   padding-top: 0;
 }
 
@@ -225,8 +224,6 @@ textarea {
 
 .icon-button,
 .empty-state__icon,
-.progress-step__icon,
-.action-card__icon,
 .meal-card__cta {
   display: inline-flex;
   align-items: center;

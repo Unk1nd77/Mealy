@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { PLAN_DAYS } from "../config";
-import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
+import { API_BASE, PLAN_DAYS } from "../config";
+import type { MealyCore } from "../controller/useMealyCommands";
 import { formatAmount } from "../formatters";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { TimeIcon } from "../ui/icons";
 import { ObservabilityPanel } from "../ui/planWidgets";
@@ -13,23 +13,20 @@ type ShoppingCore = Pick<
   | "observability"
   | "observabilityLoading"
   | "popScreen"
-  | "shoppingCopied"
   | "shoppingList"
   | "shoppingLoading"
+  | "planRecord"
 >;
-type ShoppingCommands = Pick<
-  MealyCommands,
-  "copyShoppingItems" | "openShoppingListPdf"
->;
-
 export function ShoppingScreen({
-  commands,
   core,
 }: {
-  commands: ShoppingCommands;
   core: ShoppingCore;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useText();
+  const planId = core.planRecord?.id;
+  const shoppingPdfHref = planId
+    ? `${API_BASE}/api/plans/${planId}/shopping-list.pdf`
+    : undefined;
 
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
@@ -70,22 +67,15 @@ export function ShoppingScreen({
               : t("shopping.grouped", { count: core.shoppingList.length })}
         </div>
         <div className="chip-row">
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            onClick={commands.openShoppingListPdf}
-            disabled={!core.shoppingList?.length}
-          >
-            PDF
-          </button>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            onClick={commands.copyShoppingItems}
-            disabled={!core.shoppingList?.length}
-          >
-            {core.shoppingCopied ? t("shopping.copied") : t("shopping.copy")}
-          </button>
+          {shoppingPdfHref && core.shoppingList?.length ? (
+            <a
+              href={shoppingPdfHref}
+              className="mini-link"
+              download={`mealy-shopping-list-${planId}.pdf`}
+            >
+              {t("shopping.downloadPdf")}
+            </a>
+          ) : null}
           {checked.size > 0 ? (
             <button
               type="button"
@@ -122,7 +112,7 @@ export function ShoppingScreen({
                 <div>
                   <strong>{item.name}</strong>
                 </div>
-                <span>{formatAmount(item, language, true)}</span>
+                <span>{formatAmount(item, true)}</span>
               </button>
             );
           })}

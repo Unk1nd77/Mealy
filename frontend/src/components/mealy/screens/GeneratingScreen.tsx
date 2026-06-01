@@ -1,6 +1,5 @@
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
-import { useI18n } from "../i18n";
-import { SparkIcon } from "../ui/icons";
+import { useText } from "../text";
 import { ObservabilityPanel } from "../ui/planWidgets";
 
 type GeneratingCore = Pick<
@@ -21,7 +20,7 @@ export function GeneratingScreen({
   commands: GeneratingCommands;
   core: GeneratingCore;
 }) {
-  const { t } = useI18n();
+  const { t } = useText();
 
   const statusText =
     core.generationStatus === "READY"
@@ -34,17 +33,14 @@ export function GeneratingScreen({
 
   return (
     <section className="screen-card screen-card--generation">
-      <div className="generation-orbit">
-        <span className="generation-orbit__ring" />
-        <span className="generation-orbit__ring generation-orbit__ring--accent" />
-        <span className="generation-orbit__core">
-          <SparkIcon className="icon icon--large" />
-        </span>
-      </div>
-      <div className="section-copy section-copy--centered">
+      <div className="generation-status-card">
+        <span className="generation-status-card__dot" aria-hidden="true" />
         <span className="section-copy__eyebrow">{t("generating.eyebrow")}</span>
         <h1>{t("generating.title")}</h1>
         <p>{statusText}</p>
+        <div className="generation-status-card__bar" aria-hidden="true">
+          <span />
+        </div>
       </div>
       <ObservabilityPanel
         mode="generation"

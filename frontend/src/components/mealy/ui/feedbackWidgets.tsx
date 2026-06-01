@@ -1,29 +1,12 @@
-import { useI18n } from "../i18n"
+import { useText } from "../text"
 import {
   formatObservabilityStatus,
   formatObservabilityStepKey,
   formatObservabilityStepMessage,
   formatObservabilitySummary,
 } from "../observabilityFormatters"
-import type { ObservabilityResponse, QuickAction } from "../types"
-import { ChevronRightIcon, TimeIcon } from "./icons"
-
-export function QuickActions({ actions }: { actions: QuickAction[] }) {
-  return (
-    <div className="quick-actions">
-      {actions.map((action) => (
-        <button key={action.label} type="button" className="action-card" onClick={action.onClick}>
-          <span className="action-card__icon">{action.icon}</span>
-          <div>
-            <strong>{action.label}</strong>
-            <p>{action.description}</p>
-          </div>
-          <ChevronRightIcon className="icon action-card__chevron" />
-        </button>
-      ))}
-    </div>
-  )
-}
+import type { ObservabilityResponse } from "../types"
+import { TimeIcon } from "./icons"
 
 export function ObservabilityPanel({
   mode,
@@ -34,7 +17,7 @@ export function ObservabilityPanel({
   observability: ObservabilityResponse | null
   observabilityLoading: boolean
 }) {
-  const { t } = useI18n()
+  const { t } = useText()
 
   if (!observability && !observabilityLoading) return null
   const title =

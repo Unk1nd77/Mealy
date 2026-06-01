@@ -1,13 +1,11 @@
-import { PLAN_DAYS } from "../config";
+import { API_BASE, PLAN_DAYS } from "../config";
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatGoal, formatMealType, formatPlanDayLabel } from "../formatters";
-import { useI18n } from "../i18n";
-import { RefreshIcon, ShareIcon } from "../ui/icons";
+import { useText } from "../text";
 import {
   MacroBreakdownChart,
   MealCard,
   ObservabilityPanel,
-  QuickActions,
   WeeklyCaloriesChart,
 } from "../ui/planWidgets";
 import { EmptyHomeScreen } from "./EmptyHomeScreen";
@@ -28,10 +26,7 @@ type HomeCore = Pick<
   | "user"
 >;
 
-type HomeCommands = Pick<
-  MealyCommands,
-  "openCalendarExport" | "regenerateWeek"
->;
+type HomeCommands = Pick<MealyCommands, "regenerateWeek">;
 
 export function HomeScreen({
   commands,
@@ -40,7 +35,7 @@ export function HomeScreen({
   commands: HomeCommands;
   core: HomeCore;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useText();
 
   if (!core.planData || !core.todayPlan) {
     return <EmptyHomeScreen commands={commands} core={core} />;
@@ -66,24 +61,13 @@ export function HomeScreen({
     );
   }
 
-  const actions = [
-    {
-      label: t("home.actionIntegrations"),
-      description: t("home.actionIntegrationsDesc"),
-      icon: <ShareIcon className="icon" />,
-      onClick: () => core.pushScreen({ name: "integrations" }),
-    },
-    {
-      label: t("home.actionRefresh"),
-      description: t("home.actionRefreshDesc"),
-      icon: <RefreshIcon className="icon" />,
-      onClick: commands.regenerateWeek,
-    },
-  ];
   const nextMeal = core.todayPlan.meals[0];
   const prepMeal = core.todayPlan.meals[1] ?? nextMeal;
   const overBudget = Math.round(core.todayCalories - core.dailyTarget);
   const remainingCalories = Math.round(core.dailyTarget - core.todayCalories);
+  const calendarHref = core.planRecord
+    ? `${API_BASE}/api/plans/${core.planRecord.id}/calendar.ics`
+    : undefined;
 
   return (
     <section className="screen-card screen-card--home">
@@ -92,16 +76,13 @@ export function HomeScreen({
           <div>
             <div className="eyebrow eyebrow--light">
               {t("nav.today")} ·{" "}
-              {formatPlanDayLabel(core.planRecord, core.todayIndex, language)}
+              {formatPlanDayLabel(core.planRecord, core.todayIndex)}
             </div>
             <h1>{t("home.todayPlanned")}</h1>
             <p>{t("home.heroCopy")}</p>
           </div>
           <span className="hero-badge">
-            {formatGoal(
-              core.planData.user_profile?.goal || core.user?.goal,
-              language,
-            )}
+            {formatGoal(core.planData.user_profile?.goal || core.user?.goal)}
           </span>
         </div>
         <div className="home-hero__bottom">
@@ -149,13 +130,13 @@ export function HomeScreen({
               <span>{t("common.carbs")}</span>
             </div>
           </div>
-          <button
-            type="button"
+          <a
+            href={calendarHref}
             className="mini-link mini-link--light"
-            onClick={commands.openCalendarExport}
+            download={core.planRecord ? `mealy-plan-${core.planRecord.id}.ics` : undefined}
           >
             {t("home.addCalendar")}
-          </button>
+          </a>
         </div>
       </div>
       {nextMeal ? (
@@ -191,7 +172,7 @@ export function HomeScreen({
             }}
           >
             <span className="next-meal__type">
-              {formatMealType(nextMeal.type, language)}
+              {formatMealType(nextMeal.type)}
             </span>
             <strong>
               {Math.round(nextMeal.calories)} {t("common.kcal")}
@@ -256,7 +237,7 @@ export function HomeScreen({
               </span>
               <span className="rhythm-row__title">
                 <strong>{meal.title}</strong>
-                <small>{formatMealType(meal.type, language)}</small>
+                <small>{formatMealType(meal.type)}</small>
               </span>
               <span className="rhythm-row__energy">
                 {Math.round(meal.calories)} {t("common.kcal")}
@@ -316,17 +297,6 @@ export function HomeScreen({
         observability={core.observability}
         observabilityLoading={core.observabilityLoading}
       />
-      <section className="section-block">
-        <div className="section-heading">
-          <div>
-            <span className="section-heading__eyebrow">
-              {t("home.quickActions")}
-            </span>
-            <h2>{t("home.quickActionsTitle")}</h2>
-          </div>
-        </div>
-        <QuickActions actions={actions} />
-      </section>
     </section>
   );
 }

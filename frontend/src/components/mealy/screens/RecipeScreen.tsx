@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
 import { formatAmount, formatMealType, mealVisualClass } from "../formatters";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import type { Ingredient } from "../types";
 import { ScreenHeader } from "../ui/ScreenHeader";
 
@@ -32,7 +32,7 @@ export function RecipeScreen({
   dayNumber?: number;
   mealType?: string;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useText();
   const [confirmRemove, setConfirmRemove] = useState(false);
   const recipe = core.recipeById(recipeId);
   const context = core.getMealContext(recipeId, dayNumber, mealType);
@@ -66,7 +66,7 @@ export function RecipeScreen({
       <div className={`${mealVisualClass(meal.type)} meal-visual--detail`}>
         <div className="meal-visual__content meal-visual__content--detail">
           <span className="pill pill--soft">
-            {formatMealType(meal.type, language)}
+            {formatMealType(meal.type)}
           </span>
           <strong>{meal.title}</strong>
           <p>
@@ -194,7 +194,7 @@ export function RecipeScreen({
               <div>
                 <strong>{ingredient.name}</strong>
               </div>
-              <span>{formatAmount(ingredient, language)}</span>
+              <span>{formatAmount(ingredient)}</span>
             </div>
           ))}
         </div>
@@ -221,7 +221,7 @@ export function RecipeScreen({
           <strong>
             {Math.round(meal.calories)} {t("common.kcal")}
           </strong>
-          <span>{formatMealType(meal.type, language)}</span>
+          <span>{formatMealType(meal.type)}</span>
         </div>
         <button
           type="button"

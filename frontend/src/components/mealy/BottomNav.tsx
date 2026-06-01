@@ -1,5 +1,5 @@
 import type { MealyCore } from "./controller/useMealyCommands";
-import { useI18n } from "./i18n";
+import { useText } from "./text";
 import { CalendarIcon, CartIcon, SparkIcon, UserIcon } from "./ui/icons";
 import type { BottomNavItem } from "./types";
 
@@ -22,7 +22,7 @@ export function shouldShowBottomNav(
 type BottomNavItemWithIcon = BottomNavItem & { icon: React.ReactNode };
 
 export function BottomNav({ core }: { core: BottomNavCore }) {
-  const { t } = useI18n();
+  const { t } = useText();
   if (!shouldShowBottomNav(core)) return null;
 
   const items: BottomNavItemWithIcon[] = [

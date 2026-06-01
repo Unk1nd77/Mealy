@@ -1,5 +1,5 @@
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands"
-import { useI18n } from "../i18n"
+import { useText } from "../text"
 import { ScreenHeader } from "../ui/ScreenHeader"
 import { SparkIcon } from "../ui/icons"
 
@@ -13,7 +13,7 @@ export function EmptyHomeScreen({
   commands: EmptyHomeCommands
   core: EmptyHomeCore
 }) {
-  const { t } = useI18n()
+  const { t } = useText()
   const action = core.user ? commands.regenerateWeek : core.clearAppState
   const label = core.user ? t("empty.generate") : t("empty.start")
 

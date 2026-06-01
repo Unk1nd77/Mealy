@@ -1,5 +1,5 @@
 import type { MealyCommands, MealyCore } from "../controller/useMealyCommands";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import type { ActivityLevel, Gender, Goal } from "../types";
 import { ScreenHeader } from "../ui/ScreenHeader";
 
@@ -16,7 +16,7 @@ export function ProfileScreen({
   commands: ProfileCommands;
   core: ProfileCore;
 }) {
-  const { t } = useI18n();
+  const { t } = useText();
 
   return (
     <section className="screen-card screen-card--profile">

@@ -67,44 +67,12 @@
     opacity: 0.34;
 }
 
-.language-toggle {
-    position: fixed;
-    top: calc(18px + env(safe-area-inset-top));
-    right: calc(18px + env(safe-area-inset-right));
-    z-index: 28;
-    display: inline-grid;
-    grid-template-columns: repeat(2, minmax(34px, 1fr));
-    gap: 3px;
-    padding: 3px;
-    border: 1px solid rgb(210 210 215 / 82%);
-    border-radius: var(--radius-pill);
-    color: var(--body-muted);
-    background: rgb(255 255 255 / 86%);
-    box-shadow: 0 10px 28px rgb(29 29 31 / 7%);
-    backdrop-filter: blur(18px);
-}
-
-.language-toggle span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 30px;
-    border-radius: var(--radius-pill);
-    font-size: 0.78rem;
-    font-weight: 700;
-}
-
-.language-toggle span.is-active {
-    color: var(--ink);
-    background: rgb(255 159 10 / 18%);
-}
-
 @media (min-width: 900px) {
     .screen-card {
         padding-inline: 56px;
     }
 
-    .screen-card:not(.screen-card--home, .screen-card--integrations) {
+    .screen-card:not(.screen-card--home) {
         max-width: 1040px;
     }
 }
@@ -126,8 +94,7 @@
         padding: 116px clamp(36px, 5vw, 64px) 56px;
     }
 
-    .phone-shell.has-bottom-nav .screen-card--home,
-    .phone-shell.has-bottom-nav .screen-card--integrations {
+    .phone-shell.has-bottom-nav .screen-card--home {
         padding-top: 116px;
     }
 
@@ -200,15 +167,4 @@
         font-size: 0.74rem;
     }
 
-    .language-toggle {
-        top: calc(12px + env(safe-area-inset-top));
-        right: calc(12px + env(safe-area-inset-right));
-        grid-template-columns: repeat(2, minmax(30px, 1fr));
-        padding: 3px;
-    }
-
-    .language-toggle span {
-        min-height: 28px;
-        font-size: 0.72rem;
-    }
 }

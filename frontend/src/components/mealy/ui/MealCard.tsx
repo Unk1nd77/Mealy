@@ -1,5 +1,5 @@
 import { formatMealType, mealVisualClass } from "../formatters"
-import { useI18n } from "../i18n"
+import { useText } from "../text"
 import type { MealItem } from "../types"
 import { ChevronRightIcon } from "./icons"
 
@@ -14,7 +14,7 @@ export function MealCard({
   dayNumber?: number
   onOpen: (recipeId: string, mealType: string, dayNumber?: number) => void
 }) {
-  const { language, t } = useI18n()
+  const { t } = useText()
   const macroLine = `${t("macro.p")} ${Math.round(meal.protein)}${t("common.gram")} · ${t("macro.f")} ${Math.round(meal.fat)}${t("common.gram")} · ${t("macro.c")} ${Math.round(meal.carbs)}${t("common.gram")}`
 
   return (
@@ -25,7 +25,7 @@ export function MealCard({
     >
       <div className={mealVisualClass(meal.type)}>
         <div className="meal-visual__content">
-          <span className="pill pill--soft">{formatMealType(meal.type, language)}</span>
+          <span className="pill pill--soft">{formatMealType(meal.type)}</span>
           <strong>{meal.title}</strong>
           <p>
             {meal.time || t("home.flexible")} · {Math.round(meal.calories)} {t("common.kcal")}

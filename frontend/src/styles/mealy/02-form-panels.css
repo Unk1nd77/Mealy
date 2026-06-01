@@ -7,9 +7,6 @@
 .empty-state,
 .shopping-row,
 .ingredient-row,
-.progress-step,
-.action-card,
-.integration-action,
 .profile-block,
 .chart-card {
   border: 1px solid var(--hairline);

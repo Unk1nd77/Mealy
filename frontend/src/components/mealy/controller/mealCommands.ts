@@ -21,10 +21,10 @@ export function createMealCommands(core: MealyCore) {
           dayNumber: context.day.day_number,
           mealType: nextMeal.type,
         })
-      core.patch({ globalNotice: "Meal swapped and daily totals recalculated." })
+      core.patch({ globalNotice: "Блюдо заменено, дневные итоги пересчитаны." })
     } catch (error) {
       core.patch({
-        errorNotice: error instanceof Error ? error.message : "Could not swap this meal.",
+        errorNotice: error instanceof Error ? error.message : "Не удалось заменить блюдо.",
       })
     } finally {
       core.patch({ mealActionLoading: null })
@@ -39,11 +39,11 @@ export function createMealCommands(core: MealyCore) {
     try {
       await core.client.cancelMeal(core.planRecord.id, context.day.day_number, context.meal.type)
       await core.refreshPlan(core.planRecord.id)
-      core.patch({ globalNotice: "Meal removed and daily totals recalculated." })
+      core.patch({ globalNotice: "Блюдо убрано, дневные итоги пересчитаны." })
       core.popScreen()
     } catch (error) {
       core.patch({
-        errorNotice: error instanceof Error ? error.message : "Could not remove this meal.",
+        errorNotice: error instanceof Error ? error.message : "Не удалось убрать блюдо.",
       })
     } finally {
       core.patch({ mealActionLoading: null })

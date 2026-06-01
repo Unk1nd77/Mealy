@@ -1,9 +1,9 @@
-import type { TranslationKey } from "./i18n"
+import type { TextKey } from "./text"
 import type { ObservabilityResponse, ObservabilityStep } from "./types"
 
-type Translate = (key: TranslationKey, values?: Record<string, string | number>) => string
+type Translate = (key: TextKey, values?: Record<string, string | number>) => string
 
-const STEP_KEY_MAP: Record<string, TranslationKey> = {
+const STEP_KEY_MAP: Record<string, TextKey> = {
   profile: "observability.step.profile",
   catalog: "observability.step.catalog",
   planner: "observability.step.planner",
@@ -16,7 +16,7 @@ const STEP_KEY_MAP: Record<string, TranslationKey> = {
   "shopping-list": "observability.step.shopping",
 }
 
-const MESSAGE_KEY_MAP: Record<string, TranslationKey> = {
+const MESSAGE_KEY_MAP: Record<string, TextKey> = {
   profile: "observability.message.profile",
   catalog: "observability.message.catalog",
   planner: "observability.message.planner",
@@ -27,7 +27,7 @@ const MESSAGE_KEY_MAP: Record<string, TranslationKey> = {
   reflection: "observability.message.reflection",
 }
 
-const STATUS_KEY_MAP: Record<string, TranslationKey> = {
+const STATUS_KEY_MAP: Record<string, TextKey> = {
   completed: "observability.status.completed",
   pending: "observability.status.pending",
   running: "observability.status.running",

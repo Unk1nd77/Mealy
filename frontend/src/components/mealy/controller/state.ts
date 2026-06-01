@@ -31,7 +31,6 @@ export type MealyState = {
   profileDraft: ProfileDraft
   recipesMap: Record<string, RecipeDetail>
   selectedDayNumber: number
-  shoppingCopied: boolean
   shoppingList: ShoppingItem[] | null
   shoppingLoading: boolean
   taskId: string | null
@@ -70,7 +69,6 @@ export const initialMealyState: MealyState = {
   profileDraft: initialProfileDraft,
   recipesMap: {},
   selectedDayNumber: 1,
-  shoppingCopied: false,
   shoppingList: null,
   shoppingLoading: false,
   taskId: null,

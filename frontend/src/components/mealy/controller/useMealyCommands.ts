@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import { extractBearerToken } from "../api";
 import {
   createMealyClient,
@@ -11,14 +11,13 @@ import { clamp } from "../formatters";
 import { patchStoredSession } from "../session";
 import { registerOrCreateUser } from "./authFlow";
 import { createMealCommands } from "./mealCommands";
-import { createPlanUtilityCommands } from "./planUtilityCommands";
 import type { useMealyController } from "./useMealyController";
 
 export type MealyCore = ReturnType<typeof useMealyController>;
 export type MealyCommands = ReturnType<typeof useMealyCommands>;
 
 export function useMealyCommands(core: MealyCore) {
-  const { t } = useI18n();
+  const { t } = useText();
   function goToNextStep() {
     const error = validateStep();
     if (error) return core.patch({ errorNotice: error });
@@ -72,7 +71,7 @@ export function useMealyCommands(core: MealyCore) {
       const token = extractBearerToken(auth);
       const userId = auth.user?.id ?? auth.user_id;
       if (!token || !userId)
-        throw new Error("Login succeeded without a usable session.");
+        throw new Error("Вход выполнен, но сессия не получена.");
       const user = auth.user ?? (await createMealyClient(token).authMe());
       core.setAccessToken(token);
       core.patch({ user, globalNotice: t("notice.signedIn") });
@@ -121,7 +120,7 @@ export function useMealyCommands(core: MealyCore) {
         errorNotice:
           error instanceof Error
             ? error.message
-            : "Could not start onboarding.",
+            : "Не удалось запустить онбординг.",
       });
       core.resetToScreen({ name: "onboarding" });
     } finally {
@@ -151,7 +150,7 @@ export function useMealyCommands(core: MealyCore) {
         generationError:
           error instanceof Error
             ? error.message
-            : "Could not refresh your week.",
+            : "Не удалось пересобрать неделю.",
       });
     }
   }
@@ -171,12 +170,12 @@ export function useMealyCommands(core: MealyCore) {
       const user = await core.client.updateMe(payload);
       core.patch({
         user,
-        globalNotice: "Preferences saved. Generate a fresh week to apply them.",
+        globalNotice: t("notice.prefsSaved"),
       });
     } catch (error) {
       core.patch({
         errorNotice:
-          error instanceof Error ? error.message : "Could not save profile.",
+          error instanceof Error ? error.message : "Не удалось сохранить профиль.",
       });
     } finally {
       core.patch({ isSavingProfile: false });
@@ -184,7 +183,6 @@ export function useMealyCommands(core: MealyCore) {
   }
 
   const mealCommands = createMealCommands(core);
-  const planUtilityCommands = createPlanUtilityCommands(core);
 
   return {
     createUserAndGenerate,
@@ -194,6 +192,5 @@ export function useMealyCommands(core: MealyCore) {
     regenerateWeek,
     saveProfile,
     ...mealCommands,
-    ...planUtilityCommands,
   };
 }

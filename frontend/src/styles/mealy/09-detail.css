@@ -4,8 +4,7 @@
     padding-inline: 17px;
   }
 
-  .screen-card--home,
-  .screen-card--integrations {
+  .screen-card--home {
     padding-top: 0;
   }
 
@@ -67,16 +66,6 @@
     align-items: stretch;
   }
 
-  .integration-summary {
-    grid-template-columns: 1fr;
-    padding: 20px;
-  }
-
-  .integration-summary__metric {
-    width: 100%;
-    height: auto;
-    min-height: 74px;
-  }
 }
 
 @media (max-width: 390px) {

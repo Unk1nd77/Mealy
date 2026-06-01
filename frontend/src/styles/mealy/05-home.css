@@ -58,8 +58,6 @@
   font-size: 0.62rem;
 }
 
-.action-card,
-.integration-action,
 .meal-card {
   width: 100%;
   color: inherit;
@@ -69,55 +67,8 @@
     background-color 160ms ease;
 }
 
-.action-card:hover,
-.integration-action:hover,
 .meal-card:hover {
   border-color: rgb(255 159 10 / 34%);
-}
-
-.action-card,
-.integration-action {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-}
-
-.integration-action:disabled {
-  opacity: 0.48;
-}
-
-.action-card__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
-  color: var(--primary);
-  background: rgb(255 159 10 / 12%);
-}
-
-.action-card strong,
-.integration-action strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.action-card p,
-.integration-action p {
-  color: var(--body-muted);
-  font-size: 0.84rem;
-  line-height: 1.45;
-}
-
-.integration-action span:not(.action-card__icon) {
-  display: inline-flex;
-  margin-top: 7px;
-  color: var(--ink-muted-48);
-  font-size: 0.78rem;
-}
-
-.action-card__chevron {
-  color: var(--body-muted);
 }
 
 .meal-card {

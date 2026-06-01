@@ -38,10 +38,6 @@
     padding-inline: 11px;
   }
 
-  .week-toolbar__optional {
-    display: none;
-  }
-
   .week-calendar {
     grid-auto-columns: minmax(132px, 154px);
     grid-auto-flow: column;

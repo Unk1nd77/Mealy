@@ -1,5 +1,5 @@
 import { MACRO_SERIES } from "../formatters";
-import { useI18n } from "../i18n";
+import { useText } from "../text";
 import type { DayPlan } from "../types";
 
 export function WeeklyCaloriesChart({
@@ -11,7 +11,7 @@ export function WeeklyCaloriesChart({
   dailyTarget: number;
   days: DayPlan[];
 }) {
-  const { t } = useI18n();
+  const { t } = useText();
   if (!days.length) return null;
   const maxCalories = Math.max(
     ...days.map((day) => day.total_calories),
@@ -112,7 +112,7 @@ export function MacroBreakdownChart({
   eyebrow: string;
   title: string;
 }) {
-  const { t } = useI18n();
+  const { t } = useText();
   const entries = [
     {
       ...MACRO_SERIES[0],

@@ -55,3 +55,29 @@ def test_aggregator_skips_empty_ingredient_names():
 
     result = aggregate_shopping_list(plan_data)
     assert result == [{"name": "Тофу", "amount": 120.0, "unit": "g"}]
+
+
+def test_aggregator_normalizes_spoons_and_pieces_before_grouping():
+    plan_data = {
+        "days": [
+            {
+                "meals": [
+                    {
+                        "ingredients_summary": [
+                            {"name": "Сахар", "amount": 22, "unit": "g"},
+                            {"name": "сахар", "amount": 1.5, "unit": "tbsp"},
+                            {"name": "Оливковое масло", "amount": 2, "unit": "ст. л."},
+                            {"name": "Яйцо", "amount": 2, "unit": "шт"},
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+    result = aggregate_shopping_list(plan_data)
+    assert result == [
+        {"name": "Оливковое масло", "amount": 30.0, "unit": "ml"},
+        {"name": "Сахар", "amount": 40.8, "unit": "g"},
+        {"name": "Яйцо", "amount": 110.0, "unit": "g"},
+    ]

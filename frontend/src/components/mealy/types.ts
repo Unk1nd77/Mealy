@@ -1,5 +1,3 @@
-import type { ReactNode } from "react"
-
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active"
 export type Goal = "lose" | "maintain" | "gain"
 export type Gender = "male" | "female"
@@ -152,7 +150,6 @@ export type Screen =
   | { name: "home" }
   | { name: "weekly" }
   | { name: "shopping" }
-  | { name: "integrations" }
   | { name: "profile" }
   | { name: "recipe"; recipeId: string; dayNumber?: number; mealType?: string }
 
@@ -185,13 +182,6 @@ export type ProfileDraft = {
 }
 
 export type AuthMode = "register" | "login"
-
-export type QuickAction = {
-  label: string
-  description: string
-  icon: ReactNode
-  onClick: () => void
-}
 
 export type BottomNavItem = {
   screen: Exclude<Screen, { name: "onboarding" } | { name: "generating" } | { name: "recipe" }>

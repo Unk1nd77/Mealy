@@ -9,8 +9,8 @@ export function observabilityFromTask(
   return {
     source: "live_task",
     summary: task.current_step
-      ? `Current step: ${task.current_step.replaceAll("_", " ")}`
-      : "Generation is in progress.",
+      ? `Текущий этап: ${task.current_step.replaceAll("_", " ")}`
+      : "Генерация выполняется.",
     steps: task.steps.map(normalizeObservabilityStep),
     day_checks: [],
     has_persisted_trace: false,
