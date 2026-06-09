@@ -14,6 +14,25 @@ export function useMealyLifecycle(core: MealyCore) {
   }, [core.aliveRef])
 
   useEffect(() => {
+    if (!core.isBooting) return
+    const timeout = window.setTimeout(() => {
+      if (!core.aliveRef.current) return
+      clearStoredSession()
+      core.patch({
+        accessToken: null,
+        isBooting: false,
+        planRecord: null,
+        recipesMap: {},
+        shoppingList: null,
+        taskId: null,
+        user: null,
+      })
+      core.resetToScreen({ name: "onboarding" })
+    }, 2500)
+    return () => window.clearTimeout(timeout)
+  }, [core.aliveRef, core.isBooting])
+
+  useEffect(() => {
     if (!core.user) return
     core.patch({
       profileDraft: {
@@ -50,23 +69,22 @@ export function useMealyLifecycle(core: MealyCore) {
       }
 
       try {
-        core.patch({ accessToken: stored.accessToken ?? null })
+        core.patch({ accessToken: stored.accessToken ?? null, isBooting: false })
         if (stored.userId && stored.taskId) {
-          core.patch({ taskId: stored.taskId, isBooting: false })
+          core.patch({ taskId: stored.taskId })
           core.resetToScreen({ name: "generating" })
           void core.monitorTask(stored.taskId, stored.userId, stored.accessToken ?? null)
           return
         }
         if (stored.userId && stored.planId) {
-          await core.hydratePlan(stored.userId, stored.planId, stored.accessToken ?? null)
           core.resetToScreen({ name: "home" })
-          core.patch({ isBooting: false })
+          await core.hydratePlan(stored.userId, stored.planId, stored.accessToken ?? null)
           return
         }
         if (stored.userId) {
-          const user = await core.clientFor(stored.accessToken ?? null).getUser(stored.userId)
-          core.patch({ user, isBooting: false })
           core.resetToScreen({ name: "home" })
+          const user = await core.clientFor(stored.accessToken ?? null).getUser(stored.userId)
+          core.patch({ user })
           return
         }
       } catch {
@@ -105,5 +123,4 @@ export function useMealyLifecycle(core: MealyCore) {
     }
     void core.loadObservability(core.planRecord.id, core.accessToken)
   }, [core.planRecord?.id])
-
 }

@@ -202,7 +202,7 @@ def test_find_plan_combination_returns_error_when_slot_has_no_matching_recipes()
     assert error == "Недостаточно рецептов для всех слотов расписания."
 
 
-def test_resolve_demo_target_calories_caps_target_to_really_achievable_day():
+def test_resolve_demo_target_calories_keeps_target_and_reports_scaled_portions():
     recipes = [
         _recipe("bf1", "Pancakes", "breakfast", 450),
         _recipe("bf2", "Porridge", "breakfast", 350),
@@ -218,10 +218,56 @@ def test_resolve_demo_target_calories_caps_target_to_really_achievable_day():
         2633, recipes, _schedule()
     )
 
-    assert adjusted_target == 1910
+    assert adjusted_target == 2633
     assert message is not None
     assert "2633" in message
-    assert "1910" in message
+    assert "масштабированы" in message
+
+
+def test_scale_day_to_schedule_targets_updates_kbju_and_ingredients():
+    day = {
+        "day_number": 1,
+        "total_calories": 1000.0,
+        "total_protein": 50.0,
+        "total_fat": 30.0,
+        "total_carbs": 100.0,
+        "meals": [
+            {
+                "type": "breakfast",
+                "time": "08:00",
+                "recipe_id": "bf1",
+                "title": "Pancakes",
+                "calories": 400.0,
+                "protein": 20.0,
+                "fat": 10.0,
+                "carbs": 60.0,
+                "ingredients_summary": [{"name": "Flour", "amount": 80.0, "unit": "g"}],
+            },
+            {
+                "type": "lunch",
+                "time": "13:00",
+                "recipe_id": "ln1",
+                "title": "Pasta",
+                "calories": 600.0,
+                "protein": 30.0,
+                "fat": 20.0,
+                "carbs": 40.0,
+                "ingredients_summary": [{"name": "Pasta", "amount": 120.0, "unit": "g"}],
+            },
+        ],
+    }
+    schedule = [
+        {"type": "breakfast", "time": "08:00", "calories_pct": 25},
+        {"type": "lunch", "time": "13:00", "calories_pct": 75},
+    ]
+
+    scaled = demo_pipeline._scale_day_to_schedule_targets(day, schedule, target_calories=2400)
+
+    assert scaled["total_calories"] == 2400
+    assert scaled["meals"][0]["calories"] == 600
+    assert scaled["meals"][1]["calories"] == 1800
+    assert scaled["meals"][0]["ingredients_summary"][0]["amount"] == 120
+    assert scaled["meals"][1]["ingredients_summary"][0]["amount"] == 360
 
 
 def test_find_plan_combination_respects_blocked_signatures():

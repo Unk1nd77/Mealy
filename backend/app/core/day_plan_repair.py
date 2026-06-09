@@ -55,6 +55,15 @@ def _meal_base_id(meal: dict[str, Any]) -> str:
     return recipe_id.split("::", 1)[0]
 
 
+def _meal_base_id_from_recipes(
+    meal: dict[str, Any], recipes_by_id: dict[str, dict[str, Any]]
+) -> str:
+    recipe = recipes_by_id.get(str(meal.get("recipe_id")))
+    if recipe is not None:
+        return _recipe_base_id(recipe)
+    return _meal_base_id(meal)
+
+
 def _normalize_day_totals(day_plan: dict[str, Any]) -> dict[str, Any]:
     normalized = deepcopy(day_plan)
     meals = normalized.get("meals", [])
@@ -122,7 +131,7 @@ def _candidate_lists(
     target_calories: int,
     preferred_recipe_ids: set[str],
     avoid_recipe_base_ids: set[str],
-    max_candidates_per_slot: int = 8,
+    max_candidates_per_slot: int = 20,
 ) -> list[list[dict[str, Any]]]:
     candidate_lists: list[list[dict[str, Any]]] = []
     for slot in schedule:
@@ -152,13 +161,19 @@ def repair_day_plan(
 
     Returns `(repaired_plan, applied_fixes, error_if_any)`.
     """
+    avoid_recipe_base_ids = avoid_recipe_base_ids or set()
+    recipes_by_id = {str(recipe["id"]): recipe for recipe in recipes}
     normalized_plan = _normalize_day_totals(day_plan)
     is_valid, _ = _validate(
         normalized_plan,
         target_calories=target_calories,
         meal_schedule=meal_schedule,
     )
-    if is_valid:
+    has_avoided_recipes = any(
+        _meal_base_id_from_recipes(meal, recipes_by_id) in avoid_recipe_base_ids
+        for meal in normalized_plan.get("meals", [])
+    )
+    if is_valid and not has_avoided_recipes:
         return normalized_plan, [], None
 
     current_recipe_ids = {
@@ -169,7 +184,7 @@ def repair_day_plan(
         schedule=meal_schedule,
         target_calories=target_calories,
         preferred_recipe_ids=current_recipe_ids,
-        avoid_recipe_base_ids=avoid_recipe_base_ids or set(),
+        avoid_recipe_base_ids=avoid_recipe_base_ids,
     )
     if not candidate_lists or any(not group for group in candidate_lists):
         return None, [], "Недостаточно рецептов для восстановления расписания."
@@ -190,6 +205,8 @@ def repair_day_plan(
         recipe_ids = [str(recipe["id"]) for recipe in combination]
         if len(recipe_ids) != len(set(recipe_ids)):
             continue
+        if any(_recipe_base_id(recipe) in avoid_recipe_base_ids for recipe in combination):
+            continue
 
         candidate_day = _build_day_plan(
             day_number=day_number,
@@ -206,15 +223,9 @@ def repair_day_plan(
             for slot, recipe in zip(meal_schedule, combination, strict=False)
             if preferred_ids_by_slot.get(slot["type"]) != str(recipe["id"])
         )
-        repeated_base_recipes = sum(
-            1
-            for recipe in combination
-            if _recipe_base_id(recipe) in (avoid_recipe_base_ids or set())
-        )
         deviation = abs(float(candidate_day["total_calories"]) - float(target_calories))
         score = (
             0.0 if is_valid else 1.0,
-            repeated_base_recipes,
             changed_slots + deviation / 1000.0,
         )
 
@@ -252,7 +263,7 @@ def repair_day_plan(
         reused = [
             meal["title"]
             for meal in best_plan["meals"]
-            if _meal_base_id(meal) in avoid_recipe_base_ids
+            if _meal_base_id_from_recipes(meal, recipes_by_id) in avoid_recipe_base_ids
         ]
         if reused:
             applied_fixes.append(f"repeat-aware fallback kept: {', '.join(reused)}")

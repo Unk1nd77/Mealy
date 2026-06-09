@@ -130,7 +130,9 @@ export function useMealyController() {
       if (attempt)
         await sleep(attempt < 10 ? 1800 : attempt < 30 ? 3200 : 5200);
       const task = await scopedClient.getTask(taskId).catch((error: Error) => {
-        patch({ generationError: error.message, errorNotice: error.message });
+        patchStoredSession({ userId, taskId: undefined });
+        nav.resetToScreen({ name: "home" });
+        patch({ taskId: null, generationError: error.message, errorNotice: error.message });
         return null;
       });
       if (!task || !aliveRef.current) return;
@@ -139,11 +141,15 @@ export function useMealyController() {
         generationStatus: status,
         observability: observabilityFromTask(task, state.observability),
       });
-      if (status === "FAILED")
+      if (status === "FAILED") {
+        patchStoredSession({ userId, taskId: undefined });
+        nav.resetToScreen({ name: "home" });
         return patch({
+          taskId: null,
           generationError: task.error || t("notice.genFailed"),
           errorNotice: task.error || t("notice.genFailed"),
         });
+      }
       if (status === "READY" && task.plan_id) {
         await hydratePlan(userId, task.plan_id, token);
         patchStoredSession({ userId, planId: task.plan_id, taskId: undefined });
@@ -156,7 +162,9 @@ export function useMealyController() {
         return;
       }
     }
-    patch({ generationError: t("notice.genTimeout") });
+    patchStoredSession({ userId, taskId: undefined });
+    nav.resetToScreen({ name: "home" });
+    patch({ taskId: null, generationError: t("notice.genTimeout") });
   }
   async function loadObservability(planId: string, token?: string | null) {
     patch({ observabilityLoading: true });

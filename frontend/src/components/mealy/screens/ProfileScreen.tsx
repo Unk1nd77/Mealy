@@ -7,7 +7,7 @@ type ProfileCore = Pick<
   MealyCore,
   "isSavingProfile" | "profileDraft" | "signOut" | "updateProfileDraft"
 >;
-type ProfileCommands = Pick<MealyCommands, "saveProfile">;
+type ProfileCommands = Pick<MealyCommands, "saveProfile" | "regenerateWeek">;
 
 export function ProfileScreen({
   commands,
@@ -149,6 +149,13 @@ export function ProfileScreen({
           disabled={core.isSavingProfile}
         >
           {core.isSavingProfile ? t("profile.saving") : t("profile.save")}
+        </button>
+        <button
+          type="button"
+          className="button button--ghost"
+          onClick={commands.regenerateWeek}
+        >
+          {t("week.regenerate")}
         </button>
         <button
           type="button"

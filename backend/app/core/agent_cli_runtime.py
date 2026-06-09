@@ -34,6 +34,15 @@ def _meal_base_id(meal: dict[str, Any]) -> str:
     return recipe_id.split("::", 1)[0]
 
 
+def _meal_base_id_from_recipes(
+    meal: dict[str, Any], recipes_by_id: dict[str, dict[str, Any]]
+) -> str:
+    recipe = recipes_by_id.get(str(meal.get("recipe_id")))
+    if recipe is not None:
+        return _recipe_base_id(recipe)
+    return _meal_base_id(meal)
+
+
 def _normalize_meal_type(value: str | None) -> set[str]:
     if not value:
         return set()
@@ -52,6 +61,20 @@ def _slot_compatible_types(slot_type: str) -> set[str]:
     if slot_type == "dinner":
         return {"dinner", "lunch/dinner", "universal"}
     return {slot_type}
+
+
+def _collect_used_recipe_base_ids(
+    *,
+    days: list[dict[str, Any]],
+    recipes_by_day: dict[int, list[dict[str, Any]]],
+) -> set[str]:
+    used: set[str] = set()
+    for day in days:
+        day_number = int(day["day_number"])
+        recipes_by_id = {str(recipe["id"]): recipe for recipe in recipes_by_day.get(day_number, [])}
+        for meal in day.get("meals", []):
+            used.add(_meal_base_id_from_recipes(meal, recipes_by_id))
+    return used
 
 
 def _validate_day_recipe_usage(
@@ -200,8 +223,9 @@ async def run_agent_cli_pipeline(
                 state["quality_status"] = "partially_valid"
             if day_result.validation_error:
                 warnings.append(f"Day {day_number}: {day_result.validation_error}")
+            recipes_by_id = {str(recipe["id"]): recipe for recipe in day_recipes}
             for meal in generated_days[-1].get("meals", []):
-                used_recipe_base_ids.add(_meal_base_id(meal))
+                used_recipe_base_ids.add(_meal_base_id_from_recipes(meal, recipes_by_id))
                 previous_day_titles.append(meal.get("title", ""))
 
         _set_step(
@@ -263,13 +287,40 @@ async def run_agent_cli_pipeline(
 
             repair_notes: list[str] = []
             for day_number, initial_error in days_to_repair:
+                previous_final_recipe_base_ids = _collect_used_recipe_base_ids(
+                    days=generated_days[: day_number - 1],
+                    recipes_by_day=recipes_by_day,
+                )
+                effective_avoid_recipe_base_ids = previous_final_recipe_base_ids
                 repaired_day, applied_fixes, repair_error = repair_day_plan(
                     day_plan=generated_days[day_number - 1],
                     recipes=recipes_by_day.get(day_number, current_recipes),
                     meal_schedule=shared_user.get("meal_schedule") or [],
                     target_calories=shared_user["target_calories"],
-                    avoid_recipe_base_ids=avoid_recipe_base_ids_by_day.get(day_number, set()),
+                    avoid_recipe_base_ids=effective_avoid_recipe_base_ids,
                 )
+                if repaired_day is None and day_number > 1:
+                    previous_day_recipe_base_ids = _collect_used_recipe_base_ids(
+                        days=generated_days[day_number - 2 : day_number - 1],
+                        recipes_by_day=recipes_by_day,
+                    )
+                    relaxed_day, relaxed_fixes, relaxed_error = repair_day_plan(
+                        day_plan=generated_days[day_number - 1],
+                        recipes=recipes_by_day.get(day_number, current_recipes),
+                        meal_schedule=shared_user.get("meal_schedule") or [],
+                        target_calories=shared_user["target_calories"],
+                        avoid_recipe_base_ids=previous_day_recipe_base_ids,
+                    )
+                    if relaxed_day is not None:
+                        repaired_day = relaxed_day
+                        applied_fixes = [
+                            "weekly uniqueness relaxed to previous-day uniqueness",
+                            *relaxed_fixes,
+                        ]
+                        repair_error = None
+                        effective_avoid_recipe_base_ids = previous_day_recipe_base_ids
+                    else:
+                        repair_error = relaxed_error or repair_error
                 if repaired_day is None:
                     _set_step(
                         state,
@@ -295,7 +346,7 @@ async def run_agent_cli_pipeline(
                 usage_error = _validate_day_recipe_usage(
                     day_plan=repaired_day,
                     recipes=recipes_by_day.get(day_number, current_recipes),
-                    previous_recipe_base_ids=avoid_recipe_base_ids_by_day.get(day_number, set()),
+                    previous_recipe_base_ids=effective_avoid_recipe_base_ids,
                 )
                 if usage_error:
                     _set_step(

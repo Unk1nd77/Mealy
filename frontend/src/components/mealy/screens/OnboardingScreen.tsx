@@ -100,14 +100,19 @@ export function OnboardingScreen({
             {core.authMode === "register" &&
             core.onboardingStep < core.onboardingSteps ? (
               <button
+                key="continue-step"
                 type="button"
                 className="button button--primary"
-                onClick={commands.goToNextStep}
+                onClick={(event) => {
+                  event.preventDefault();
+                  commands.goToNextStep();
+                }}
               >
                 {t("onboarding.continue")}
               </button>
             ) : (
               <button
+                key="submit-onboarding"
                 type="submit"
                 className="button button--primary"
                 disabled={core.isWorking}

@@ -94,9 +94,17 @@ export function useMealyCommands(core: MealyCore) {
 
   async function createUserAndGenerate(event: FormEvent) {
     event.preventDefault();
-    core.patch({ errorNotice: "", globalNotice: "", isWorking: true });
+    core.patch({
+      errorNotice: "",
+      generationError: "",
+      globalNotice: "",
+      isWorking: true,
+    });
+    const tokenBeforeGenerate = core.accessToken;
+    let runUserId: string;
+    let runToken: string | null | undefined = tokenBeforeGenerate;
+
     try {
-      const tokenBeforeGenerate = core.accessToken;
       const { user, token } = await registerOrCreateUser({
         client: core.client,
         fallbackPassword: core.onboardingForm.password,
@@ -105,24 +113,37 @@ export function useMealyCommands(core: MealyCore) {
       core.patch({ user });
       if (token) core.setAccessToken(token);
       patchStoredSession({ userId: user.id, accessToken: token ?? undefined });
+      runUserId = user.id;
+      runToken = token ?? tokenBeforeGenerate;
       core.resetToScreen({ name: "generating" });
-      const runToken = token ?? tokenBeforeGenerate;
-      const client = createMealyClient(runToken);
-      const { task_id } = await client.generatePlan(user.id);
-      patchStoredSession({
-        userId: user.id,
-        taskId: task_id,
-        planId: undefined,
-      });
-      await core.monitorTask(task_id, user.id, runToken);
     } catch (error) {
       core.patch({
         errorNotice:
           error instanceof Error
             ? error.message
             : "Не удалось запустить онбординг.",
+        isWorking: false,
       });
       core.resetToScreen({ name: "onboarding" });
+      return;
+    }
+
+    try {
+      const client = createMealyClient(runToken);
+      const { task_id } = await client.generatePlan(runUserId);
+      patchStoredSession({
+        userId: runUserId,
+        taskId: task_id,
+        planId: undefined,
+      });
+      await core.monitorTask(task_id, runUserId, runToken);
+    } catch (error) {
+      core.patch({
+        generationError:
+          error instanceof Error
+            ? error.message
+            : "Не удалось запустить генерацию плана.",
+      });
     } finally {
       core.patch({ isWorking: false });
     }
@@ -175,7 +196,9 @@ export function useMealyCommands(core: MealyCore) {
     } catch (error) {
       core.patch({
         errorNotice:
-          error instanceof Error ? error.message : "Не удалось сохранить профиль.",
+          error instanceof Error
+            ? error.message
+            : "Не удалось сохранить профиль.",
       });
     } finally {
       core.patch({ isSavingProfile: false });

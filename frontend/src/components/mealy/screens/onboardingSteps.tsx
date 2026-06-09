@@ -13,7 +13,8 @@ export function StepBody({ core }: { core: OnboardingCore }) {
   if (core.authMode !== "register") return null;
   if (core.onboardingStep === 2) return <BodyStep core={core} />;
   if (core.onboardingStep === 3) return <GoalStep core={core} />;
-  return <RestrictionsStep core={core} />;
+  if (core.onboardingStep === 4) return <RestrictionsStep core={core} />;
+  return null;
 }
 
 function AccountStep({ core }: { core: OnboardingCore }) {
@@ -132,12 +133,6 @@ function GoalStep({ core }: { core: OnboardingCore }) {
           <option value="gain">{t("onboarding.gainMuscle")}</option>
         </select>
       </label>
-      <TextArea
-        core={core}
-        field="preferences"
-        label={t("onboarding.preferences")}
-        placeholder={t("onboarding.preferencesPlaceholder")}
-      />
     </>
   );
 }
@@ -156,6 +151,12 @@ function RestrictionsStep({ core }: { core: OnboardingCore }) {
         field="allergies"
         label={t("onboarding.allergies")}
         placeholder={t("onboarding.allergiesPlaceholder")}
+      />
+      <TextArea
+        core={core}
+        field="preferences"
+        label={t("onboarding.preferences")}
+        placeholder={t("onboarding.preferencesPlaceholder")}
       />
       <TextArea
         core={core}

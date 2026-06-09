@@ -228,7 +228,18 @@ async def generate_day_plan(
         settings.LLM_CONTEXT_RECIPE_LIMIT,
         settings.AGENT_CLI_MIN_CONTEXT_RECIPE_LIMIT,
     )
-    bounded_recipes = recipes[:recipe_context_limit]
+    # Sort: unused recipes first, then by title for stability.
+    # This ensures the LLM sees fresh options at the top even when
+    # recipe_context_limit < total available recipes.
+    avoid_ids = avoid_recipe_ids or set()
+    sorted_recipes = sorted(
+        recipes,
+        key=lambda r: (
+            1 if str(r["id"] if isinstance(r, dict) else r.id).split("::", 1)[0] in avoid_ids else 0,
+            r["title"] if isinstance(r, dict) else r.title,
+        ),
+    )
+    bounded_recipes = sorted_recipes[:recipe_context_limit]
 
     templates = _load_prompt()
     system_prompt = _build_system_prompt(

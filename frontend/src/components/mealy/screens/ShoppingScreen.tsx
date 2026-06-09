@@ -17,11 +17,7 @@ type ShoppingCore = Pick<
   | "shoppingLoading"
   | "planRecord"
 >;
-export function ShoppingScreen({
-  core,
-}: {
-  core: ShoppingCore;
-}) {
+export function ShoppingScreen({ core }: { core: ShoppingCore }) {
   const { t } = useText();
   const planId = core.planRecord?.id;
   const shoppingPdfHref = planId
@@ -58,19 +54,19 @@ export function ShoppingScreen({
         observability={core.observability}
         observabilityLoading={core.observabilityLoading}
       />
-      <div className="section-toolbar">
-        <div className="soft-copy">
+      <div className="section-toolbar shopping-toolbar">
+        <div className="soft-copy shopping-toolbar__summary">
           {core.shoppingList === null
             ? t("common.loading")
             : core.shoppingList.length === 0
               ? t("shopping.emptyTitle")
               : t("shopping.grouped", { count: core.shoppingList.length })}
         </div>
-        <div className="chip-row">
+        <div className="shopping-toolbar__actions">
           {shoppingPdfHref && core.shoppingList?.length ? (
             <a
               href={shoppingPdfHref}
-              className="mini-link"
+              className="mini-link shopping-toolbar__pdf"
               download={`mealy-shopping-list-${planId}.pdf`}
             >
               {t("shopping.downloadPdf")}

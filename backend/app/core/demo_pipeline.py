@@ -76,6 +76,48 @@ def _build_meal(recipe: dict[str, Any], slot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _scale_meal(meal: dict[str, Any], target_calories: float) -> dict[str, Any]:
+    calories = float(meal.get("calories") or 0)
+    if calories <= 0 or target_calories <= 0:
+        return meal
+
+    factor = target_calories / calories
+    scaled = {**meal}
+    for key in ("calories", "protein", "fat", "carbs"):
+        scaled[key] = round(float(meal.get(key) or 0) * factor, 1)
+    scaled["ingredients_summary"] = [
+        {
+            **ingredient,
+            "amount": round(float(ingredient.get("amount") or 0) * factor, 1),
+        }
+        for ingredient in meal.get("ingredients_summary", [])
+    ]
+    return scaled
+
+
+def _scale_day_to_schedule_targets(
+    day_plan: dict[str, Any],
+    schedule: list[dict[str, Any]],
+    target_calories: int,
+) -> dict[str, Any]:
+    slot_targets = {
+        slot["type"]: float(target_calories) * float(slot["calories_pct"]) / 100
+        for slot in schedule
+    }
+    meals = [
+        _scale_meal(meal, slot_targets.get(meal["type"], float(meal.get("calories") or 0)))
+        for meal in day_plan.get("meals", [])
+    ]
+    return {
+        **day_plan,
+        "total_calories": round(sum(meal["calories"] for meal in meals), 1),
+        "total_protein": round(sum(meal["protein"] for meal in meals), 1),
+        "total_fat": round(sum(meal["fat"] for meal in meals), 1),
+        "total_carbs": round(sum(meal["carbs"] for meal in meals), 1),
+        "meals": meals,
+    }
+
+
 def _build_day_plan(
     day_number: int, schedule: list[dict[str, Any]], recipes: list[dict[str, Any]]
 ) -> dict:
@@ -245,7 +287,11 @@ def _find_plan_combination(
         if len(recipe_ids) != len(set(recipe_ids)):
             continue
 
-        day_plan = _build_day_plan(day_number, schedule, list(combination))
+        day_plan = _scale_day_to_schedule_targets(
+            _build_day_plan(day_number, schedule, list(combination)),
+            schedule,
+            target_calories,
+        )
         signature = _plan_signature(day_plan)
         if signature in signatures:
             continue
@@ -358,15 +404,11 @@ def _resolve_demo_target_calories(
     if target_calories <= achievable_max:
         return target_calories, None
 
-    # In demo mode we anchor the target to the best achievable unique day,
-    # so the validator can accept a real plan from the current catalog.
-    demo_target = achievable_max
-
     return (
-        demo_target,
+        target_calories,
         (
-            f"Для демо target_calories скорректирован с {target_calories} до {demo_target}, "
-            f"потому что текущий каталог рецептов даёт максимум около {achievable_max} ккал/день."
+            f"Для демо порции масштабированы под target_calories={target_calories}, "
+            f"потому что базовый каталог рецептов даёт максимум около {achievable_max} ккал/день."
         ),
     )
 
@@ -453,7 +495,11 @@ def _directed_auto_fix(
         for alternative in alternatives:
             if alternative["id"] == current_by_type[slot_type]["recipe_id"]:
                 continue
-            replacement = _build_replaced_day(day_plan, {slot_type: alternative}, schedule)
+            replacement = _scale_day_to_schedule_targets(
+                _build_replaced_day(day_plan, {slot_type: alternative}, schedule),
+                schedule,
+                target_calories,
+            )
             signature = _plan_signature(replacement)
             if signature in blocked:
                 continue
@@ -487,10 +533,14 @@ def _directed_auto_fix(
                     and second_alt["id"] == current_by_type[second_slot]["recipe_id"]
                 ):
                     continue
-                replacement = _build_replaced_day(
-                    day_plan,
-                    {first_slot: first_alt, second_slot: second_alt},
+                replacement = _scale_day_to_schedule_targets(
+                    _build_replaced_day(
+                        day_plan,
+                        {first_slot: first_alt, second_slot: second_alt},
+                        schedule,
+                    ),
                     schedule,
+                    target_calories,
                 )
                 signature = _plan_signature(replacement)
                 if signature in blocked:
@@ -520,6 +570,9 @@ def _directed_auto_fix(
     if best_day is not day_plan:
         return best_day, best_error
     return None, best_error
+
+
+_DEMO_TASK_TTL = 3600  # 1 hour — enough for polling after generation completes
 
 
 @dataclass
@@ -557,21 +610,45 @@ class DemoTaskState:
             "warnings": deepcopy(self.warnings),
         }
 
+    async def save(self) -> None:
+        """Persist task state to Redis so it survives process restarts / hot-reload."""
+        from app.core import cache as _cache
+        await _cache.set_json(f"demo_task:{self.task_id}", self.payload(), ttl=_DEMO_TASK_TTL)
 
-DEMO_TASKS: dict[str, DemoTaskState] = {}
+    @classmethod
+    async def load(cls, task_id: str) -> "DemoTaskState | None":
+        """Load task state from Redis."""
+        from app.core import cache as _cache
+        data = await _cache.get_json(f"demo_task:{task_id}")
+        if data is None:
+            return None
+        return cls(
+            task_id=data["task_id"],
+            user_id=data.get("user_id", ""),
+            days=data.get("days", 7),
+            mode=data.get("mode", "demo"),
+            status=data.get("status", "PENDING"),
+            quality_status=data.get("quality_status", "valid"),
+            current_step=data.get("current_step"),
+            steps=data.get("steps"),
+            error=data.get("error"),
+            plan_id=data.get("plan_id"),
+            shopping_list=data.get("shopping_list"),
+            warnings=data.get("warnings"),
+        )
 
 
-def get_demo_task(task_id: str) -> DemoTaskState | None:
-    return DEMO_TASKS.get(task_id)
+async def get_demo_task(task_id: str) -> DemoTaskState | None:
+    """Load demo task from Redis (survives hot-reload and process restarts)."""
+    return await DemoTaskState.load(task_id)
 
 
 def create_demo_task(user_id: str, days: int) -> DemoTaskState:
     task = DemoTaskState(task_id=str(uuid.uuid4()), user_id=user_id, days=days)
-    DEMO_TASKS[task.task_id] = task
     return task
 
 
-def _set_step(
+async def _set_step(
     task: DemoTaskState,
     key: str,
     *,
@@ -587,9 +664,10 @@ def _set_step(
             step["status"] = status
             step["message"] = message
             break
+    await task.save()
 
 
-def _finish_task(task: DemoTaskState, status: str, error: str | None = None) -> None:
+async def _finish_task(task: DemoTaskState, status: str, error: str | None = None) -> None:
     task.status = status
     task.error = error
     if status == "FAILED":
@@ -599,12 +677,13 @@ def _finish_task(task: DemoTaskState, status: str, error: str | None = None) -> 
                 if error and not step["message"]:
                     step["message"] = error
                 break
+    await task.save()
 
 
 async def run_demo_pipeline(task: DemoTaskState) -> None:
     try:
         demo_warnings: list[str] = []
-        _set_step(
+        await _set_step(
             task, "context", status="running", message="Собираем профиль и локальный каталог."
         )
         async with async_session() as session:
@@ -615,7 +694,7 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
         if "soft-предпочтения" in recipe_mode_message:
             task.quality_status = "partially_valid"
             demo_warnings.append(recipe_mode_message)
-        _set_step(
+        await _set_step(
             task,
             "context",
             status="completed",
@@ -633,8 +712,6 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
         )
         if target_message:
             user_profile["demo_original_target_calories"] = source_target_calories
-            user_profile["target_calories"] = target_calories
-            task.quality_status = "partially_valid"
             demo_warnings.append(target_message)
             context_message = next(step for step in (task.steps or []) if step["key"] == "context")
             context_message["message"] = f"{context_message['message']} {target_message}"
@@ -646,7 +723,7 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
             len(recipes),
         )
 
-        _set_step(
+        await _set_step(
             task,
             "generate",
             status="running",
@@ -682,14 +759,14 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
             )
             generated_days.append(day_plan)
             used_signatures.add(_plan_signature(day_plan))
-        _set_step(
+        await _set_step(
             task,
             "generate",
             status="completed",
             message=f"Черновик плана собран на {task.days} дн.",
         )
 
-        _set_step(task, "validate", status="running", message="Проверяем КБЖУ и расписание.")
+        await _set_step(task, "validate", status="running", message="Проверяем КБЖУ и расписание.")
         failed_days: list[tuple[int, str]] = []
         for day_plan in generated_days:
             is_valid, error = validate_day_plan(
@@ -716,13 +793,13 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
                     _meal_summary(day_plan),
                 )
         if not failed_days:
-            _set_step(
+            await _set_step(
                 task,
                 "validate",
                 status="completed",
                 message="План прошёл валидацию без исправлений.",
             )
-            _set_step(
+            await _set_step(
                 task,
                 "auto-fix",
                 status="skipped",
@@ -730,14 +807,14 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
                 activate=False,
             )
         else:
-            _set_step(
+            await _set_step(
                 task,
                 "validate",
                 status="completed",
                 message=f"Найдены отклонения в {len(failed_days)} дн., запускаем auto-fix.",
             )
 
-            _set_step(
+            await _set_step(
                 task,
                 "auto-fix",
                 status="running",
@@ -818,7 +895,7 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
                 generated_days[day_number - 1] = fixed_day
                 blocked_signatures.add(_plan_signature(fixed_day))
                 failed_days[index] = (day_number, "fixed")
-            _set_step(
+            await _set_step(
                 task,
                 "auto-fix",
                 status="completed",
@@ -839,7 +916,7 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
         }
         task.warnings = demo_warnings
 
-        _set_step(task, "save", status="running", message="Сохраняем план в базу.")
+        await _set_step(task, "save", status="running", message="Сохраняем план в базу.")
         async with async_session() as session:
             plan_record = await create_plan_record(
                 session,
@@ -854,25 +931,25 @@ async def run_demo_pipeline(task: DemoTaskState) -> None:
                 status=MealPlanStatus.ready,
             )
             task.plan_id = str(plan_record.id)
-        _set_step(task, "save", status="completed", message=f"План сохранён: {task.plan_id}.")
+        await _set_step(task, "save", status="completed", message=f"План сохранён: {task.plan_id}.")
 
-        _set_step(
+        await _set_step(
             task,
             "shopping-list",
             status="running",
             message="Агрегируем список покупок.",
         )
         task.shopping_list = aggregate_shopping_list(plan_data)
-        _set_step(
+        await _set_step(
             task,
             "shopping-list",
             status="completed",
             message=f"Список покупок собран: {len(task.shopping_list)} позиций.",
         )
-        _finish_task(task, "READY")
+        await _finish_task(task, "READY")
     except Exception as exc:
         logger.exception("Demo pipeline failed for task {}", task.task_id)
-        _finish_task(task, "FAILED", str(exc))
+        await _finish_task(task, "FAILED", str(exc))
 
 
 class DayPlanAdapter:

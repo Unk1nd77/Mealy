@@ -73,10 +73,7 @@ const TEXT = {
   "recipe.replacing": "Заменяем...",
   "recipe.remove": "Убрать",
   "recipe.removing": "Убираем...",
-  "recipe.description": "Описание",
-  "recipe.descriptionTitle": "Зачем это блюдо",
-  "recipe.descriptionFallback":
-    "Блюдо из текущего плана. Ингредиенты берутся из проверенного каталога рецептов, который использовался при генерации.",
+
   "recipe.ingredients": "Ингредиенты",
   "recipe.ingredientsTitle": "Что подготовить",
   "recipe.steps": "Рецепт",

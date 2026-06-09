@@ -50,6 +50,27 @@
   padding: 14px;
 }
 
+.shopping-toolbar {
+  align-items: center;
+}
+
+.shopping-toolbar__summary {
+  min-width: 0;
+}
+
+.shopping-toolbar__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.shopping-toolbar__pdf {
+  white-space: nowrap;
+}
+
 .shopping-row--interactive {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

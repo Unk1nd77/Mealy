@@ -14,6 +14,61 @@ from app.core.relational_store import load_recipes_from_rows
 
 CACHE_KEY = "recipes:all"
 CACHE_TTL = 86400  # 24 hours
+
+# Maps Russian allergen names (as users enter them) to the English codes
+# stored in the recipe_allergens table.
+# Values are sets so one Russian word can map to multiple English codes
+# (e.g. "орехи" excludes both "nuts" AND "peanuts" — peanut butter is nut-adjacent).
+_RU_ALLERGEN_MAP: dict[str, set[str]] = {
+    # tree nuts + peanuts (арахис — тоже орех для большинства аллергиков)
+    "орехи": {"nuts", "peanuts"},
+    "орех": {"nuts", "peanuts"},
+    "грецкие орехи": {"nuts", "peanuts"},
+    "миндаль": {"nuts"},
+    "кешью": {"nuts"},
+    "фундук": {"nuts"},
+    # peanuts
+    "арахис": {"peanuts"},
+    "арахисовая паста": {"peanuts"},
+    # dairy
+    "молоко": {"milk"},
+    "молочные продукты": {"milk"},
+    "лактоза": {"lactose"},
+    # gluten
+    "глютен": {"gluten"},
+    "пшеница": {"gluten"},
+    # eggs
+    "яйца": {"eggs"},
+    "яйцо": {"eggs"},
+    # fish & seafood
+    "рыба": {"fish"},
+    "морепродукты": {"fish"},
+    # soy
+    "соя": {"soy"},
+    # honey
+    "мёд": {"honey"},
+    "мед": {"honey"},
+}
+
+
+def _normalize_allergen(allergen: str) -> set[str]:
+    """Return a set of allergen codes to match against recipe_allergens.
+
+    Handles both English codes (pass-through) and Russian names (mapped to codes).
+    Always includes the original lowercased value for substring matching as a fallback.
+    """
+    lower = allergen.lower().strip()
+    codes: set[str] = {lower}  # keep original for substring fallback
+    if lower in _RU_ALLERGEN_MAP:
+        codes.update(_RU_ALLERGEN_MAP[lower])
+    else:
+        # partial match: e.g. "грецкие орехи" → {"nuts", "peanuts"}
+        for ru_key, en_codes in _RU_ALLERGEN_MAP.items():
+            if ru_key in lower or lower in ru_key:
+                codes.update(en_codes)
+    return codes
+
+
 _TAG_TO_MEAL_TYPE = {
     "завтрак": "breakfast",
     "обед": "lunch",
@@ -146,11 +201,13 @@ async def search_recipes(
     """
     all_recipes = await _get_all_recipes(session)
 
-    # --- Hard exclusion: allergens (exact match on enriched field) ---
-    user_allergens = set()
+    # --- Hard exclusion: allergens ---
+    # Normalize Russian allergen names to English codes used in recipe_allergens table.
+    # "орехи" → {"nuts", "peanuts"} so peanut butter is also excluded.
+    user_allergen_codes: set[str] = set()
     if allergies:
         for a in allergies:
-            user_allergens.add(a.lower().strip())
+            user_allergen_codes.update(_normalize_allergen(a))
 
     # --- Hard exclusion: disease rules ---
     disease_exclude_keywords: list[str] = []
@@ -164,9 +221,22 @@ async def search_recipes(
     # Apply hard filters
     safe_recipes: list[dict] = []
     for r in all_recipes:
-        # Filter by allergens (exact set intersection)
+        # Filter by allergens: check if any recipe allergen code matches user's codes.
+        # Uses both exact match and substring fallback for cross-language robustness.
         recipe_allergens = {a.lower().strip() for a in (r.get("allergens", []) or [])}
-        if user_allergens & recipe_allergens:
+        allergen_hit = False
+        for recipe_a in recipe_allergens:
+            if recipe_a in user_allergen_codes:
+                allergen_hit = True
+                break
+            # substring fallback: catches cases where codes partially overlap
+            for user_a in user_allergen_codes:
+                if user_a in recipe_a or recipe_a in user_a:
+                    allergen_hit = True
+                    break
+            if allergen_hit:
+                break
+        if allergen_hit:
             continue
 
         # Filter by disease-excluded keywords

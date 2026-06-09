@@ -29,6 +29,19 @@ def _context(day_number: int) -> dict:
             "feasible": True,
         },
         "available_recipes": [
+            *[
+                {
+                    "id": f"recipe-{index}",
+                    "title": f"Recipe {index}",
+                    "meal_type": "breakfast",
+                    "calories": 2000,
+                    "protein": 140,
+                    "fat": 70,
+                    "carbs": 180,
+                    "ingredients": [],
+                }
+                for index in range(1, 8)
+            ],
             {
                 "id": "recipe-breakfast",
                 "title": "Breakfast Recipe",
@@ -646,3 +659,248 @@ async def test_agent_cli_runtime_auto_fix_avoids_repeating_previous_day_recipe_w
     assert result["status"] == "READY"
     assert result["quality_status"] == "partially_valid"
     assert any("auto-fix after" in warning for warning in result["warnings"])
+
+
+@pytest.mark.asyncio
+async def test_agent_cli_runtime_auto_fix_uses_repaired_previous_days(monkeypatch):
+    base_context = _context(1)
+    base_context["user"]["meal_schedule"] = [
+        {"type": "snack", "time": "16:00", "calories_pct": 100},
+    ]
+
+    recipes = [
+        {
+            "id": "snack-a",
+            "title": "Snack A",
+            "meal_type": "snack",
+            "calories": 2000,
+            "protein": 80,
+            "fat": 50,
+            "carbs": 250,
+            "ingredients": [],
+        },
+        {
+            "id": "snack-b",
+            "title": "Snack B",
+            "meal_type": "snack",
+            "calories": 2000,
+            "protein": 80,
+            "fat": 50,
+            "carbs": 250,
+            "ingredients": [],
+        },
+        {
+            "id": "snack-c",
+            "title": "Snack C",
+            "meal_type": "snack",
+            "calories": 2000,
+            "protein": 80,
+            "fat": 50,
+            "carbs": 250,
+            "ingredients": [],
+        },
+    ]
+
+    async def fake_context(user_id: str, day: int):
+        return {**base_context, "day_number": day, "available_recipes": recipes}
+
+    async def fake_generate(user, recipes, day_number: int, **kwargs):
+        return GeneratedDayResult(
+            plan=DayPlanFull(
+                day_number=day_number,
+                total_calories=2000,
+                total_protein=80,
+                total_fat=50,
+                total_carbs=250,
+                meals=[
+                    MealItemFull(
+                        type="snack",
+                        time="16:00",
+                        recipe_id="snack-a",
+                        title="Snack A",
+                        calories=2000,
+                        protein=80,
+                        fat=50,
+                        carbs=250,
+                        ingredients_summary=[],
+                    )
+                ],
+            ),
+            quality_status="valid",
+            attempts_used=1,
+            validation_error=None,
+        )
+
+    def fake_repair_day_plan(
+        *,
+        day_plan: dict,
+        recipes: list[dict],
+        meal_schedule: list[dict],
+        target_calories: int,
+        avoid_recipe_base_ids: set[str] | None = None,
+    ):
+        if day_plan["day_number"] == 2:
+            assert avoid_recipe_base_ids == {"snack-a"}
+            replacement_id = "snack-b"
+            replacement_title = "Snack B"
+        else:
+            assert day_plan["day_number"] == 3
+            assert avoid_recipe_base_ids == {"snack-a", "snack-b"}
+            replacement_id = "snack-c"
+            replacement_title = "Snack C"
+
+        repaired_day = {
+            **day_plan,
+            "meals": [
+                {
+                    **day_plan["meals"][0],
+                    "recipe_id": replacement_id,
+                    "title": replacement_title,
+                }
+            ],
+        }
+        return repaired_day, ["repeat-aware replacement"], None
+
+    async def fake_save(user_id: str, plan_data: dict, *, days_count: int):
+        assert [day["meals"][0]["recipe_id"] for day in plan_data["days"]] == [
+            "snack-a",
+            "snack-b",
+            "snack-c",
+        ]
+        return {"plan_id": "plan-fixed", "status": "READY", "days": days_count}
+
+    monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
+    monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
+    monkeypatch.setattr(
+        agent_cli_runtime,
+        "validate_plan_payload",
+        lambda *args, **kwargs: ({"valid": True}, 0),
+    )
+    monkeypatch.setattr(agent_cli_runtime, "repair_day_plan", fake_repair_day_plan)
+    monkeypatch.setattr(agent_cli_runtime, "save_plan_payload", fake_save)
+    monkeypatch.setattr(
+        agent_cli_runtime,
+        "build_shopping_list_payload",
+        lambda *args, **kwargs: [{"name": "Snack", "amount": 1.0, "unit": "portion"}],
+    )
+
+    result = await agent_cli_runtime.run_agent_cli_pipeline(user_id="user-1", days=3)
+
+    assert result["status"] == "READY"
+    assert result["quality_status"] == "partially_valid"
+
+
+@pytest.mark.asyncio
+async def test_agent_cli_runtime_auto_fix_relaxes_to_previous_day_uniqueness(monkeypatch):
+    base_context = _context(1)
+    base_context["user"]["meal_schedule"] = [
+        {"type": "snack", "time": "16:00", "calories_pct": 100},
+    ]
+    recipes = [
+        {
+            "id": "snack-a",
+            "title": "Snack A",
+            "meal_type": "snack",
+            "calories": 2000,
+            "protein": 80,
+            "fat": 50,
+            "carbs": 250,
+            "ingredients": [],
+        },
+        {
+            "id": "snack-b",
+            "title": "Snack B",
+            "meal_type": "snack",
+            "calories": 2000,
+            "protein": 80,
+            "fat": 50,
+            "carbs": 250,
+            "ingredients": [],
+        },
+    ]
+
+    async def fake_context(user_id: str, day: int):
+        return {**base_context, "day_number": day, "available_recipes": recipes}
+
+    async def fake_generate(user, recipes, day_number: int, **kwargs):
+        recipe_id = "snack-a" if day_number != 2 else "snack-b"
+        return GeneratedDayResult(
+            plan=DayPlanFull(
+                day_number=day_number,
+                total_calories=2000,
+                total_protein=80,
+                total_fat=50,
+                total_carbs=250,
+                meals=[
+                    MealItemFull(
+                        type="snack",
+                        time="16:00",
+                        recipe_id=recipe_id,
+                        title=recipe_id,
+                        calories=2000,
+                        protein=80,
+                        fat=50,
+                        carbs=250,
+                        ingredients_summary=[],
+                    )
+                ],
+            ),
+            quality_status="valid",
+            attempts_used=1,
+            validation_error=None,
+        )
+
+    def fake_repair_day_plan(
+        *,
+        day_plan: dict,
+        recipes: list[dict],
+        meal_schedule: list[dict],
+        target_calories: int,
+        avoid_recipe_base_ids: set[str] | None = None,
+    ):
+        if avoid_recipe_base_ids == {"snack-a", "snack-b"}:
+            return None, [], "Не удалось подобрать неповторяющуюся комбинацию рецептов."
+        assert avoid_recipe_base_ids == {"snack-b"}
+        repaired_day = {
+            **day_plan,
+            "meals": [
+                {
+                    **day_plan["meals"][0],
+                    "recipe_id": "snack-a",
+                    "title": "Snack A",
+                }
+            ],
+        }
+        return repaired_day, ["repeat-aware replacement"], None
+
+    async def fake_save(user_id: str, plan_data: dict, *, days_count: int):
+        assert [day["meals"][0]["recipe_id"] for day in plan_data["days"]] == [
+            "snack-a",
+            "snack-b",
+            "snack-a",
+        ]
+        assert any(
+            "weekly uniqueness relaxed" in warning
+            for warning in plan_data["generation_meta"]["warnings"]
+        )
+        return {"plan_id": "plan-relaxed", "status": "READY", "days": days_count}
+
+    monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
+    monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
+    monkeypatch.setattr(
+        agent_cli_runtime,
+        "validate_plan_payload",
+        lambda *args, **kwargs: ({"valid": True}, 0),
+    )
+    monkeypatch.setattr(agent_cli_runtime, "repair_day_plan", fake_repair_day_plan)
+    monkeypatch.setattr(agent_cli_runtime, "save_plan_payload", fake_save)
+    monkeypatch.setattr(
+        agent_cli_runtime,
+        "build_shopping_list_payload",
+        lambda *args, **kwargs: [{"name": "Snack", "amount": 1.0, "unit": "portion"}],
+    )
+
+    result = await agent_cli_runtime.run_agent_cli_pipeline(user_id="user-1", days=3)
+
+    assert result["status"] == "READY"
+    assert result["quality_status"] == "partially_valid"

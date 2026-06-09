@@ -75,10 +75,21 @@ export function WeeklyScreen({
     <section className="screen-card screen-card--week">
       <div className="section-toolbar section-toolbar--tight week-toolbar">
         <div className="toolbar-actions">
+          <button
+            type="button"
+            className="mini-link week-action week-action--secondary"
+            onClick={commands.regenerateWeek}
+          >
+            {t("week.regenerate")}
+          </button>
           <a
             href={calendarHref}
             className="mini-link week-action week-action--primary"
-            download={core.planRecord ? `mealy-plan-${core.planRecord.id}.ics` : undefined}
+            download={
+              core.planRecord
+                ? `mealy-plan-${core.planRecord.id}.ics`
+                : undefined
+            }
           >
             {t("week.calendar")}
           </a>
@@ -143,9 +154,7 @@ export function WeeklyScreen({
           <p className="section-heading__eyebrow">
             {t("week.day")} {activeDay.day_number}
           </p>
-          <h3>
-            {formatPlanDayLabel(core.planRecord, activeDay.day_number)}
-          </h3>
+          <h3>{formatPlanDayLabel(core.planRecord, activeDay.day_number)}</h3>
           <div className="week-metrics">
             <div>
               <strong>{Math.round(activeDay.total_calories)}</strong>

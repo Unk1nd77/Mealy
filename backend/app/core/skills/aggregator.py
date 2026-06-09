@@ -83,13 +83,36 @@ _PIECE_GRAMS_BY_NAME: list[tuple[re.Pattern[str], float]] = [
     (re.compile(r"ломтик|slice|хлеб|bread", re.IGNORECASE), 30.0),
 ]
 
+# Canonical form for ingredient name variants (all lowercase).
+# Maps any alias → canonical name used as the grouping key.
+_NAME_ALIASES: dict[str, str] = {
+    # eggs — merge яйцо/яйца
+    "яйцо": "яйца",
+    "яиц": "яйца",
+    # onion
+    "лук репчатый": "лук",
+    "лук репч.": "лук",
+    # garlic
+    "чеснок зубчик": "чеснок",
+    "чеснок зубчики": "чеснок",
+    # tomato
+    "томат": "помидор",
+    "томаты": "помидор",
+    "помидоры": "помидор",
+    # cucumber
+    "огурцы": "огурец",
+    # carrot
+    "морковка": "морковь",
+}
+
 
 def _display_name(name: str) -> str:
     return name[0].upper() + name[1:] if name else name
 
 
 def _normalize_name(name: object) -> str:
-    return " ".join(str(name or "").strip().lower().split())
+    lower = " ".join(str(name or "").strip().lower().split())
+    return _NAME_ALIASES.get(lower, lower)
 
 
 def _normalize_unit(unit: object) -> str:
@@ -133,7 +156,8 @@ def _normalize_amount(name: str, amount: float, unit: str) -> tuple[float, str]:
 def aggregate_shopping_list(plan_data: dict) -> list[dict]:
     """Агрегирует ингредиенты из всех дней плана в единый список покупок.
 
-    Суммирует одинаковые ингредиенты после приведения единиц к граммам/мл.
+    Суммирует одинаковые ингредиенты после приведения единиц к граммам/мл,
+    нормализуя имена (яйцо→яйца, томат→помидор и т.д.).
     """
     totals: dict[tuple[str, str], float] = defaultdict(float)
 

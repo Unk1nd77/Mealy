@@ -9,10 +9,17 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .venv/
+.vscode/
 venv/
 
 # Local secrets
 .env
+
+outputs/*
+scripts/*
+
+docs/*
+
 
 # Node / Astro frontend
 frontend/node_modules/

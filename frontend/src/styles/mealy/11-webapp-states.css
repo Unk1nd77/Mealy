@@ -170,13 +170,24 @@
 }
 
 .profile-actions {
-  display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(120px, 0.42fr);
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   width: min(100%, 960px);
   margin: 14px auto 0;
   padding: 0;
-  justify-content: end;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.profile-actions .button--primary {
+  flex: 1 1 180px;
+  max-width: 260px;
+}
+
+.profile-actions .button--ghost {
+  flex: 1 1 140px;
+  max-width: 220px;
 }
 
 .profile-actions .secondary-cta {

@@ -283,6 +283,7 @@ async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(ge
 @router.post("/demo/generate-plan", response_model=GeneratePlanResponse)
 async def generate_demo_plan(data: GeneratePlanRequest, background_tasks: BackgroundTasks):
     task = create_demo_task(str(data.user_id), data.days)
+    await task.save()
     background_tasks.add_task(schedule_demo_pipeline, task)
     logger.info("Demo plan generation queued: task_id={} user_id={}", task.task_id, data.user_id)
     return GeneratePlanResponse(task_id=task.task_id)
@@ -329,7 +330,7 @@ async def get_task_status(task_id: str):
 
 @router.get("/demo/tasks/{task_id}", response_model=DemoTaskStatusResponse)
 async def get_demo_task_status(task_id: str):
-    task = get_demo_task(task_id)
+    task = await get_demo_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Demo task not found")
     return DemoTaskStatusResponse(**task.payload())

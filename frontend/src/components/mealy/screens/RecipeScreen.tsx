@@ -65,9 +65,7 @@ export function RecipeScreen({
       />
       <div className={`${mealVisualClass(meal.type)} meal-visual--detail`}>
         <div className="meal-visual__content meal-visual__content--detail">
-          <span className="pill pill--soft">
-            {formatMealType(meal.type)}
-          </span>
+          <span className="pill pill--soft">{formatMealType(meal.type)}</span>
           <strong>{meal.title}</strong>
           <p>
             {meal.time || t("recipe.anytime")} ·{" "}
@@ -163,19 +161,7 @@ export function RecipeScreen({
           )}
         </div>
       </section>
-      {recipe?.description ? (
-        <section className="detail-block">
-          <div className="section-heading">
-            <div>
-              <span className="section-heading__eyebrow">
-                {t("recipe.description")}
-              </span>
-              <h2>{t("recipe.descriptionTitle")}</h2>
-            </div>
-          </div>
-          <p className="soft-copy">{recipe.description}</p>
-        </section>
-      ) : null}
+
       <section className="detail-block">
         <div className="section-heading">
           <div>
