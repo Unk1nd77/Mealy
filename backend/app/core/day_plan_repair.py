@@ -173,7 +173,12 @@ def repair_day_plan(
         _meal_base_id_from_recipes(meal, recipes_by_id) in avoid_recipe_base_ids
         for meal in normalized_plan.get("meals", [])
     )
-    if is_valid and not has_avoided_recipes:
+    has_incompatible_recipes = any(
+        (recipe := recipes_by_id.get(str(meal.get("recipe_id")))) is None
+        or not _recipe_matches_slot(recipe, str(meal.get("type")))
+        for meal in normalized_plan.get("meals", [])
+    )
+    if is_valid and not has_avoided_recipes and not has_incompatible_recipes:
         return normalized_plan, [], None
 
     current_recipe_ids = {
