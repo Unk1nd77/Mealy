@@ -1,0 +1,5 @@
+bucket       = "mealy-terraform-state-294615681551"
+key          = "environments/dev/terraform.tfstate"
+region       = "eu-north-1"
+encrypt      = true
+use_lockfile = true

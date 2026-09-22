@@ -1,0 +1,4 @@
+budget_notification_email = "you@example.com"
+monthly_budget_usd         = 100
+backend_image_tag          = "rag-v1"
+admin_emails               = "admin@example.com"

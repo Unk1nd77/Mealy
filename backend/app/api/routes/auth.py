@@ -133,6 +133,16 @@ async def get_current_user(
     return user
 
 
+async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """Require an authenticated user whose email is configured as an administrator."""
+    if current_user.email.lower() not in settings.admin_emails:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator access required",
+        )
+    return current_user
+
+
 async def _issue_auth_response(db: AsyncSession, user: User) -> AuthResponse:
     access_token, expires_in = _create_access_token(user.id)
     profile = await _build_profile_cache_from_rows(db, user)

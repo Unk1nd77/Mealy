@@ -1,10 +1,6 @@
 # ── Stage 1: build ──────────────────────────────────
 FROM python:3.11-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
-
 COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \

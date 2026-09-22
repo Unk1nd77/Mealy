@@ -6,11 +6,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routes.auth import get_admin_user
 from app.core.catalog_ingest import (
     add_candidate_review,
     admit_recipe_candidate,
     create_recipe_candidate,
+    update_catalog_recipe,
 )
+from app.core.relational_store import recipe_to_dict
 from app.db.models import (
     RecipeCandidate,
     RecipeCandidateReview,
@@ -22,7 +25,11 @@ from app.db.models import (
 from app.db.session import get_db
 from app.worker import celery_app
 
-router = APIRouter(prefix="/api/catalog", tags=["Catalog"])
+router = APIRouter(
+    prefix="/api/catalog",
+    tags=["Catalog"],
+    dependencies=[Depends(get_admin_user)],
+)
 
 
 class CandidateCreateRequest(BaseModel):
@@ -155,6 +162,7 @@ class CatalogTaskStatusResponse(BaseModel):
     steps: list[CatalogTaskStepResponse] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
     error: str | None = None
+    items: list[dict] = Field(default_factory=list)
 
 
 class SourceCandidateResponse(BaseModel):
@@ -180,6 +188,23 @@ async def admit_candidate(candidate_id: uuid.UUID, db: AsyncSession = Depends(ge
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return AdmitResponse(candidate_id=candidate_id, recipe_id=recipe.id)
+
+
+@router.put("/recipes/{recipe_id}")
+async def update_recipe(
+    recipe_id: uuid.UUID,
+    data: CandidateCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        recipe = await update_catalog_recipe(
+            db,
+            recipe_id=str(recipe_id),
+            payload=data.payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return recipe_to_dict(recipe)
 
 
 @router.post("/ingest-jobs", response_model=CatalogIngestJobResponse)
@@ -222,6 +247,7 @@ async def get_catalog_task_status(task_id: str):
         steps=progress_meta.get("steps") or [],
         reason_codes=progress_meta.get("reason_codes") or [],
         error=progress_meta.get("error"),
+        items=progress_meta.get("items") or [],
     )
 
     if result.state == "FAILURE":
@@ -238,6 +264,7 @@ async def get_catalog_task_status(task_id: str):
         response.steps = result.result.get("steps") or response.steps
         response.reason_codes = result.result.get("reason_codes") or response.reason_codes
         response.error = result.result.get("error") or response.error
+        response.items = result.result.get("items") or response.items
         task_status = result.result.get("status")
         if task_status == RecipeCandidateStatus.accepted.value:
             response.status = "ACCEPTED"

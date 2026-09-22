@@ -79,5 +79,5 @@ def test_aggregator_normalizes_spoons_and_pieces_before_grouping():
     assert result == [
         {"name": "Оливковое масло", "amount": 30.0, "unit": "ml"},
         {"name": "Сахар", "amount": 40.8, "unit": "g"},
-        {"name": "Яйцо", "amount": 110.0, "unit": "g"},
+        {"name": "Яйца", "amount": 110.0, "unit": "g"},
     ]

@@ -7,6 +7,12 @@ import pytest
 from app.core.agent import orchestrator
 
 
+@pytest.fixture(autouse=True)
+def legacy_mode(monkeypatch):
+    """Keep these legacy pipeline tests independent from the local .env mode."""
+    monkeypatch.setattr(orchestrator.settings, "AGENT_TOOL_USE_ENABLED", False)
+
+
 class _DummyTemplate:
     def render(self, **_: object) -> str:
         return "dummy"

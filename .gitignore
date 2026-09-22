@@ -15,6 +15,22 @@ venv/
 # Local secrets
 .env
 
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+backend.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+!*.tfvars.example
+!*.hcl.example
+
 outputs/*
 scripts/*
 

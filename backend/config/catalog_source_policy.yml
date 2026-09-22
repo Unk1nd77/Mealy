@@ -30,8 +30,10 @@ domains:
     trust_level: trusted_editorial
     locale: ru
     methods:
+      - search
       - sitemap
       - category_pages
+    search_path_template: "/search?search={query}"
     category_entrypoints:
       - "/recipe"
     recipe_url_patterns:

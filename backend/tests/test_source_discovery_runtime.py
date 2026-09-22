@@ -120,6 +120,116 @@ async def test_run_source_discovery_pipeline_fails_on_rejected_source(monkeypatc
         verification_agent=object(),
     )
 
-    assert result.status == "FAILED"
+    assert result.status == "REJECTED"
     assert result.reason_codes == ["source_domain_not_allowed"]
     assert result.current_step == "source"
+    assert result.items[0]["url"] == "https://example.com/recipe"
+
+
+@pytest.mark.asyncio
+async def test_run_source_discovery_pipeline_processes_multiple_sources(monkeypatch):
+    source_ids = iter(
+        [
+            uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+        ]
+    )
+
+    async def fake_discovery(seed_input):
+        return [
+            DiscoverySourceOutput(url="https://example.com/one"),
+            DiscoverySourceOutput(url="https://example.com/two"),
+        ]
+
+    async def fake_create_source_candidate(*args, **kwargs):
+        candidate = _FakeSourceCandidate()
+        candidate.id = next(source_ids)
+        candidate.url = kwargs["url"]
+        return candidate
+
+    pipeline_calls = []
+
+    async def fake_catalog_pipeline(*args, **kwargs):
+        pipeline_calls.append(kwargs["seed_input"]["source_url"])
+        suffix = len(pipeline_calls)
+        return CatalogAgentRuntimeResult(
+            status="REVIEW" if suffix == 1 else "ACCEPTED",
+            candidate_id=f"cand-{suffix}",
+            review_id=f"review-{suffix}",
+            recipe_id=None if suffix == 1 else "recipe-2",
+            reason_codes=[],
+            steps=[],
+            current_step="admit",
+        )
+
+    async def fake_attach(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        source_discovery_runtime, "create_source_candidate", fake_create_source_candidate
+    )
+    monkeypatch.setattr(
+        source_discovery_runtime, "run_catalog_agent_pipeline", fake_catalog_pipeline
+    )
+    monkeypatch.setattr(
+        source_discovery_runtime, "attach_source_candidate_to_recipe_candidate", fake_attach
+    )
+
+    result = await source_discovery_runtime.run_source_discovery_pipeline(
+        session=object(),
+        seed_input={"query": "chicken"},
+        discovery_agent=fake_discovery,
+        research_agent=object(),
+        verification_agent=object(),
+    )
+
+    assert pipeline_calls == ["https://example.com/one", "https://example.com/two"]
+    assert result.status == "ACCEPTED"
+    assert result.recipe_id == "recipe-2"
+    assert [item["status"] for item in result.items] == ["REVIEW", "ACCEPTED"]
+
+
+@pytest.mark.asyncio
+async def test_source_failure_does_not_block_next_url(monkeypatch):
+    async def fake_discovery(seed_input):
+        return [
+            DiscoverySourceOutput(url="https://example.com/broken"),
+            DiscoverySourceOutput(url="https://example.com/working"),
+        ]
+
+    async def fake_create_source_candidate(*args, **kwargs):
+        if kwargs["url"].endswith("broken"):
+            raise RuntimeError("timeout")
+        candidate = _FakeSourceCandidate()
+        candidate.url = kwargs["url"]
+        return candidate
+
+    async def fake_catalog_pipeline(*args, **kwargs):
+        return CatalogAgentRuntimeResult(
+            status="ACCEPTED",
+            candidate_id=None,
+            recipe_id="recipe-working",
+            reason_codes=[],
+            steps=[],
+            current_step="admit",
+        )
+
+    monkeypatch.setattr(
+        source_discovery_runtime, "create_source_candidate", fake_create_source_candidate
+    )
+    monkeypatch.setattr(
+        source_discovery_runtime, "run_catalog_agent_pipeline", fake_catalog_pipeline
+    )
+
+    result = await source_discovery_runtime.run_source_discovery_pipeline(
+        session=object(),
+        seed_input={"query": "chicken"},
+        discovery_agent=fake_discovery,
+        research_agent=object(),
+        verification_agent=object(),
+    )
+
+    assert result.status == "ACCEPTED"
+    assert result.recipe_id == "recipe-working"
+    assert result.items[0]["status"] == "FAILED"
+    assert result.items[1]["status"] == "ACCEPTED"

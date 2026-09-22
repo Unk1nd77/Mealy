@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from html import unescape
@@ -12,6 +13,10 @@ import httpx
 from app.config import settings
 
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_JSON_LD_RE = re.compile(
+    r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+    re.IGNORECASE | re.DOTALL,
+)
 _META_DESC_RE = re.compile(
     r'<meta[^>]+name=["\']description["\'][^>]+content=["\'](.*?)["\']',
     re.IGNORECASE | re.DOTALL,
@@ -41,6 +46,15 @@ _PREP_TIME_RE = re.compile(
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 _AMOUNT_RE = re.compile(r"^\s*([0-9]+(?:[.,][0-9]+)?)\s*(.*?)\s*$")
+_INGREDIENT_TEXT_RE = re.compile(
+    r"^\s*(?:(?P<amount>[0-9]+(?:[.,][0-9]+)?)\s*"
+    r"(?P<unit>кг|г|гр|мл|л|шт\.?|ст\.?\s*л\.?|ч\.?\s*л\.?)\s+"
+    r"(?P<name>.+)|(?P<name_first>.+?)\s*[-—:,]\s*"
+    r"(?P<amount_last>[0-9]+(?:[.,][0-9]+)?)\s*"
+    r"(?P<unit_last>кг|г|гр|мл|л|шт\.?|ст\.?\s*л\.?|ч\.?\s*л\.?))\s*$",
+    re.IGNORECASE,
+)
+_DURATION_RE = re.compile(r"^P(?:\d+D)?T(?:(\d+)H)?(?:(\d+)M)?", re.IGNORECASE)
 _UNIT_ALIASES = {
     "г": "g",
     "гр": "g",
@@ -98,6 +112,112 @@ def _normalize_amount_unit(amount_text: str) -> tuple[float, str] | None:
     return amount, unit
 
 
+def _first_number(value: Any) -> float | None:
+    match = re.search(r"[0-9]+(?:[.,][0-9]+)?", str(value or ""))
+    return float(match.group(0).replace(",", ".")) if match else None
+
+
+def _parse_duration_minutes(value: Any) -> int | None:
+    match = _DURATION_RE.match(str(value or "").strip())
+    if not match:
+        return None
+    return int(match.group(1) or 0) * 60 + int(match.group(2) or 0) or None
+
+
+def _parse_jsonld_ingredient(value: Any) -> dict[str, Any] | None:
+    text = _clean_text(str(value or ""))
+    match = _INGREDIENT_TEXT_RE.match(text)
+    if not match:
+        return None
+    amount = match.group("amount") or match.group("amount_last")
+    unit = match.group("unit") or match.group("unit_last")
+    name = match.group("name") or match.group("name_first")
+    normalized = _normalize_amount_unit(f"{amount} {unit}")
+    if normalized is None or not name:
+        return None
+    parsed_amount, parsed_unit = normalized
+    return {
+        "name": _clean_text(name),
+        "amount": parsed_amount,
+        "unit": parsed_unit,
+        "amount_text": f"{amount} {unit}",
+    }
+
+
+def _walk_jsonld(value: Any):
+    if isinstance(value, list):
+        for item in value:
+            yield from _walk_jsonld(item)
+    elif isinstance(value, dict):
+        raw_type = value.get("@type")
+        types = raw_type if isinstance(raw_type, list) else [raw_type]
+        if any(str(item).lower() == "recipe" for item in types):
+            yield value
+        for key in ("@graph", "mainEntity", "itemListElement"):
+            if key in value:
+                yield from _walk_jsonld(value[key])
+
+
+def _instruction_texts(value: Any) -> list[str]:
+    results: list[str] = []
+    for item in value if isinstance(value, list) else [value]:
+        if isinstance(item, str):
+            text = _clean_text(item)
+            if text:
+                results.append(text)
+        elif isinstance(item, dict):
+            text = _clean_text(str(item.get("text") or item.get("name") or ""))
+            if text:
+                results.append(text)
+            results.extend(_instruction_texts(item.get("itemListElement") or []))
+    return results
+
+
+def _extract_jsonld_recipe(html: str) -> dict[str, Any]:
+    for raw_block in _JSON_LD_RE.findall(html):
+        try:
+            decoded = json.loads(unescape(raw_block).strip())
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for recipe in _walk_jsonld(decoded):
+            ingredients = [
+                parsed
+                for value in recipe.get("recipeIngredient") or []
+                if (parsed := _parse_jsonld_ingredient(value)) is not None
+            ]
+            nutrition_source = recipe.get("nutrition") or {}
+            nutrition = {
+                key: parsed
+                for key, source_key in {
+                    "calories": "calories",
+                    "protein": "proteinContent",
+                    "fat": "fatContent",
+                    "carbs": "carbohydrateContent",
+                }.items()
+                if (parsed := _first_number(nutrition_source.get(source_key))) is not None
+            }
+            raw_yield = recipe.get("recipeYield")
+            if isinstance(raw_yield, list):
+                raw_yield = raw_yield[0] if raw_yield else None
+            servings = _first_number(raw_yield)
+            return {
+                "title": _clean_text(str(recipe.get("name") or "")),
+                "description": _clean_text(str(recipe.get("description") or "")),
+                "ingredients": ingredients,
+                "ingredient_lines": [
+                    _clean_text(str(value)) for value in recipe.get("recipeIngredient") or []
+                ],
+                "nutrition": nutrition,
+                "servings": int(servings) if servings else None,
+                "prep_time_min": _parse_duration_minutes(
+                    recipe.get("totalTime") or recipe.get("prepTime") or recipe.get("cookTime")
+                ),
+                "cooking_steps": _instruction_texts(recipe.get("recipeInstructions") or []),
+                "schema": "Recipe",
+            }
+    return {}
+
+
 def _extract_structured_recipe(html: str) -> dict[str, Any]:
     ingredients: list[dict[str, Any]] = []
     for raw_name, raw_amount in _RECIPE_INGREDIENT_RE.findall(html):
@@ -135,12 +255,21 @@ def _build_html_snapshot(url: str, html: str) -> ResolvedCatalogSource:
     title = _clean_text(title_match.group(1), limit=200) if title_match else None
     description = _clean_text(meta_match.group(1), limit=400) if meta_match else None
     excerpt = _clean_text(html, limit=settings.CATALOG_SOURCE_TEXT_CHAR_LIMIT)
-    structured_recipe = _extract_structured_recipe(html)
+    structured_recipe = _extract_jsonld_recipe(html)
+    parser = "json_ld"
+    if not structured_recipe:
+        structured_recipe = _extract_structured_recipe(html)
+        parser = "legacy_html"
+    if structured_recipe.get("title"):
+        title = structured_recipe["title"]
+    if structured_recipe.get("description"):
+        description = structured_recipe["description"]
     snapshot = {
         "title": title,
         "description": description,
         "html_excerpt": excerpt,
         "structured_recipe": structured_recipe,
+        "parser": parser,
     }
     provenance = {
         "resolver": "http_fetch",

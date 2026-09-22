@@ -80,6 +80,41 @@ async def test_search_recipes_keeps_preferred_first_but_preserves_safe_fallback(
     assert [recipe["id"] for recipe in result] == ["1", "2", "3"]
 
 
+@pytest.mark.asyncio
+async def test_vector_ranking_never_bypasses_allergen_filter(monkeypatch):
+    ranked = [
+        {
+            "id": "unsafe",
+            "title": "Ореховый десерт",
+            "tags": ["десерт"],
+            "allergens": ["nuts"],
+            "ingredients_short": "миндаль",
+            "_semantic_similarity": 0.99,
+        },
+        {
+            "id": "safe",
+            "title": "Запеченная рыба",
+            "tags": ["ужин"],
+            "allergens": ["fish"],
+            "ingredients_short": "рыба, лимон",
+            "_semantic_similarity": 0.71,
+        },
+    ]
+    monkeypatch.setattr(
+        retriever,
+        "_get_hybrid_recipe_order",
+        AsyncMock(return_value=(ranked, True)),
+    )
+
+    result = await retriever.search_recipes(
+        SimpleNamespace(),
+        allergies=["орехи"],
+        semantic_query="полезный десерт или ужин",
+    )
+
+    assert [recipe["id"] for recipe in result] == ["safe"]
+
+
 def test_select_recipes_for_generation_preserves_slot_coverage_and_high_calorie_candidates():
     user_profile = {
         "target_calories": 2600,

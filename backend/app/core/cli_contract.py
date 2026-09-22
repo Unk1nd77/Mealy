@@ -19,10 +19,17 @@ from app.db.models import MealPlanStatus
 from app.db.session import async_session
 
 
-async def build_context_payload(user_id: str, day: int = 1) -> dict[str, Any]:
+async def build_context_payload(
+    user_id: str,
+    day: int = 1,
+    *,
+    include_recipes: bool = True,
+) -> dict[str, Any]:
     """Build the same context payload that the CLI exposes to an agent."""
     async with async_session() as session:
         user = await load_user_profile(session, user_id)
+        if not include_recipes:
+            return {"user": user, "day_number": day, "available_recipes": []}
         recipe_limit = max(
             settings.LLM_CONTEXT_RECIPE_LIMIT,
             settings.AGENT_CLI_MIN_CONTEXT_RECIPE_LIMIT,
