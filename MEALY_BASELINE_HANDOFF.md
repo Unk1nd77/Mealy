@@ -18,14 +18,15 @@
 | Свободное место перед backup | около 15 GiB |
 | FileVault | выключен; поэтому backup создан как отдельно зашифрованный disk image |
 
-Предварительное утверждение о `main` не подтвердилось. На момент фиксации default remote ref — `origin/HEAD -> origin/master`; `origin/main` отсутствует. Важные refs:
+Remote изменился между preflight и публикацией baseline. Это временная хронология, а не противоречие:
 
-- `origin/master` -> `a9f57f594d2aecf558892571b047227a4f584fbe`;
-- `origin/audit/mealy` -> `649493dd1accb3b34dde71b1a8501bfc321280d0`;
-- локальная `master` -> `dea86e3c3079b6acc5186bcbbaa96a72fb4b8c00` и отстаёт от `origin/master` на 19 commits;
-- локальная `wip/agent-cli-catalog-runtime` -> `649493dd1accb3b34dde71b1a8501bfc321280d0`;
-- `origin/wip/agent-cli-catalog-runtime` -> `b50372c82552cff477e1c2cd8650a9de8ae9008d`;
-- отдельный remote-tracking ref `mealy-private/master` -> `aeb6f45196aca677a90a5c828de04058ce448826`.
+- во время backup preflight `origin/HEAD` указывал на `origin/master`, а `origin/master` — на уникальный commit `a9f57f594d2aecf558892571b047227a4f584fbe`;
+- непосредственно перед публикацией выполнен свежий `git fetch --prune origin`: GitHub удалил `origin/master` и `origin/wip/agent-cli-catalog-runtime`, создал `origin/main`, а default branch стала `main`;
+- текущее основание `origin/main` и `origin/audit/mealy` — `649493dd1accb3b34dde71b1a8501bfc321280d0`;
+- удалённый baseline публикуется как `origin/codex/wip/mealy-audit-baseline-2026-09-22`;
+- удалённый `master`, ранее удерживавший `a9f57f5`, больше не существует, поэтому локальный archive ref и зашифрованный backup нельзя удалять;
+- локальная `master` -> `dea86e3c3079b6acc5186bcbbaa96a72fb4b8c00` сохранила устаревшую tracking-конфигурацию на уже отсутствующий `origin/master`;
+- отдельный remote-tracking ref `mealy-private/master` -> `aeb6f45196aca677a90a5c828de04058ce448826` не является частью configured remote `origin`.
 
 Незавершённых merge, rebase или cherry-pick перед snapshot не было.
 
@@ -86,7 +87,13 @@ Snapshot текущей разработки:
 
 `77c6abfb6c44a25e7469fdb63f5d65bbb0976490` — `chore: capture pre-Astra audit baseline`
 
-Parent snapshot-коммита: `649493dd1accb3b34dde71b1a8501bfc321280d0`. В commit вошёл 101 путь: 40 modified, 55 added, 6 deleted; 5,925 insertions и 2,571 deletions. Push не выполнялся.
+Parent snapshot-коммита: `649493dd1accb3b34dde71b1a8501bfc321280d0`. В commit вошёл 101 путь: 40 modified, 55 added, 6 deleted; 5,925 insertions и 2,571 deletions.
+
+Ветка опубликована без force-push как:
+
+`origin/codex/wip/mealy-audit-baseline-2026-09-22`
+
+Она является **pre-cleanup baseline**: до завершения Astra-аудита в ней нельзя выполнять cleanup, refactoring, auto-fixes или удаление legacy-кода. Pull request направлен в фактическую основную ветку `main`; merge не является частью этой задачи.
 
 Перед commit staged content был проверен на высокосигнальные шаблоны секретов: совпадений не найдено. `.env`, `tfstate`, `tfplan`, реальные `tfvars`, приватные конфиги, caches и Office lock-файлы не добавлялись.
 
@@ -191,7 +198,7 @@ Fresh-database migration test подтверждает исполнимость 
 - проверки с production credentials;
 - destructive downgrade/upgrade cycles на существующей БД;
 - Terraform `plan/apply` и cloud validation;
-- push веток или commits.
+- deployment и merge pull request.
 
 ## 5. Оставшиеся неопределённости и ограничения
 
@@ -204,7 +211,8 @@ Fresh-database migration test подтверждает исполнимость 
 - **Неизвестно:** являются ли все 84 TypeScript errors следствием одного общего contract mismatch или несколькими независимыми дефектами.
 - **Неизвестно:** соответствует ли live-source/LLM поведение ожидаемым внешним API, поскольку secrets и сеть для таких тестов не использовались.
 - **Неизвестно:** являются ли три файла в `audit-results/` ценными исходными свидетельствами или устаревшими generated reports; до решения их нельзя удалять.
-- **Ограничение:** локальные refs и snapshot не отправлены на remote. Защита от потери машины обеспечена encrypted sparsebundle вне repo, но не off-device копией.
+- **Факт:** pre-cleanup snapshot опубликован в отдельной remote-ветке и может быть получен Astra без доступа к исходному компьютеру.
+- **Ограничение:** ignored/untracked sensitive data и unreachable checkpoint objects доступны только в encrypted sparsebundle и локальных Git objects; remote-ветка намеренно их не содержит. Sparsebundle находится вне repo, но всё ещё на том же компьютере, а не в off-device хранилище.
 
 ## 6. Инструкция для Astra
 
@@ -212,14 +220,22 @@ Fresh-database migration test подтверждает исполнимость 
 
 `77c6abfb6c44a25e7469fdb63f5d65bbb0976490`
 
-Ветка-указатель:
+Удалённая рабочая ветка до очистки:
 
-`codex/wip/mealy-audit-baseline-2026-09-22`
+`origin/codex/wip/mealy-audit-baseline-2026-09-22`
+
+Получение baseline в отдельный локальный checkout:
+
+```bash
+git fetch origin codex/wip/mealy-audit-baseline-2026-09-22
+git switch --create audit/astra-pre-cleanup --track origin/codex/wip/mealy-audit-baseline-2026-09-22
+git rev-parse 77c6abfb6c44a25e7469fdb63f5d65bbb0976490^{commit}
+```
 
 Astra должна:
 
-1. Аудировать именно дерево snapshot commit `77c6abf`; последующий commit с этим handoff-документом, если он присутствует, меняет только документацию.
-2. Сравнивать intended behavior с `README.md`, `.kiro/specs/plan-agent-tools/*`, backend contracts и migrations в этом commit, не с произвольной локальной `master`.
+1. Начать с remote-ветки `origin/codex/wip/mealy-audit-baseline-2026-09-22` и аудировать именно дерево snapshot commit `77c6abf`; последующие commits в ветке меняют только этот handoff-документ.
+2. Не очищать и не рефакторить ветку до завершения read-only аудита. Сравнивать intended behavior с `README.md`, `.kiro/specs/plan-agent-tools/*`, backend contracts и migrations в snapshot, не с локальной `master` и не с удалённым старым `master`.
 3. Учитывать оба generation paths, feature flags, agent runtime, catalog/RAG/embedding path, Celery, API/frontend contracts и Terraform, не считая untested code автоматически dead.
 4. Считать `alembic check` drift и 84 TypeScript errors известными baseline-сигналами, требующими анализа, а не разрешением на автоматическое исправление.
 5. Не удалять до отдельного решения пользователя: legacy pipeline, три untracked `audit-results/*`, ignored scripts/outputs, sensitive config/state, old checkpoint objects и ref `codex/archive/origin-master-a9f57f5`.
@@ -234,5 +250,6 @@ Astra должна:
 - encrypted backup размонтирован;
 - ephemeral Redis/PostgreSQL verification containers удалены;
 - source code после snapshot не исправлялся и не форматировался;
-- push не выполнялся;
-- в working tree остаются только пять перечисленных исключённых untracked files плюс этот handoff-документ до его отдельной фиксации.
+- pre-cleanup ветка опубликована в `origin` без force-push;
+- pull request создан в `main`, но не смержен;
+- в working tree остаются только пять перечисленных исключённых untracked files; они не вошли в remote-ветку.
