@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.core import agent_cli_runtime, cli_contract
-from app.core.agent import orchestrator as agent
+from app.core.agent import runtime as agent
 from app.db import session as db
 from app.worker import tasks
 from tests.agent.test_agentic_loop import fake_llm, final, setup_calls

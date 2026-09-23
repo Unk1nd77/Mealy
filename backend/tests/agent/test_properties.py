@@ -5,6 +5,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.core.agent import orchestrator as agent
+from app.core.agent import runtime
 from app.core.agent.schemas import MealPlanOutput
 from app.core.rag import retriever
 from tests.test_orchestrator import _recipes, _user_profile, _valid_llm_json
@@ -36,9 +37,9 @@ async def test_pipeline_compatibility(day, target):
         patch.object(agent, "_call_llm", new_callable=AsyncMock, return_value=json.dumps(output)),
         patch.object(agent, "validate_day_plan", return_value=(True, None)),
         patch.object(
-            agent, "ToolExecutor", side_effect=AssertionError("must not construct executor")
+            runtime, "ToolExecutor", side_effect=AssertionError("must not construct executor")
         ),
-        patch.object(agent, "async_session", side_effect=AssertionError("must not open session")),
+        patch.object(runtime, "async_session", side_effect=AssertionError("must not open session")),
     ):
         result = await agent.generate_day_plan(profile, _recipes(), day)
     assert result.plan.day_number == day and result.tool_call_trace == []

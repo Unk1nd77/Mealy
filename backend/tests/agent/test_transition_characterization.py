@@ -13,7 +13,8 @@ import httpx
 import pytest
 
 from app.core import agent_cli_runtime, cli_contract
-from app.core.agent import orchestrator as agent
+from app.core.agent import runtime as agent
+from app.core.rag import retriever
 from app.db import session as db
 from app.db.models import MealPlanStatus
 from app.worker import tasks
@@ -62,7 +63,7 @@ def scripted_days(monkeypatch, plan_data, recipes, days):
         pools.append(pool)
         replies.extend([*setup_calls(day), final(day)])
     search = AsyncMock(side_effect=pools)
-    monkeypatch.setattr(agent.retriever, "search_recipes", search)
+    monkeypatch.setattr(retriever, "search_recipes", search)
     snapshots = fake_llm(monkeypatch, replies)
     return search, snapshots
 
@@ -148,7 +149,7 @@ async def test_executor_state_does_not_leak_between_users(profile, recipes, monk
     first = agent.ToolExecutor(profile, AsyncMock())
     second = agent.ToolExecutor(other, AsyncMock())
     search = AsyncMock(return_value=recipes)
-    monkeypatch.setattr(agent.retriever, "search_recipes", search)
+    monkeypatch.setattr(retriever, "search_recipes", search)
     await first.dispatch("get_user_profile", {})
     await first.dispatch("search_recipes", {"query": "food", "user_id": "owner-b"})
     assert first.session_state.profile_fetched
@@ -171,7 +172,7 @@ async def test_baseline_id_provenance_does_not_make_nutrients_canonical(
     for recipe in canonical:
         recipe["calories"] = 1
         recipe["protein"] = 1
-    monkeypatch.setattr(agent.retriever, "search_recipes", AsyncMock(return_value=canonical))
+    monkeypatch.setattr(retriever, "search_recipes", AsyncMock(return_value=canonical))
     fake_llm(monkeypatch, [*setup_calls(plan_data), final(plan_data)])
     result = await agent._run_agentic_loop(profile, AsyncMock())
     assert result.quality_status == "valid"

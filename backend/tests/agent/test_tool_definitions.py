@@ -8,7 +8,8 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from app.config import Settings
-from app.core.agent import orchestrator as agent
+from app.core.agent import runtime as agent
+from app.core.agent.guards import AgentSessionState
 
 
 def test_definitions_and_partial_registration(monkeypatch):
@@ -69,7 +70,7 @@ async def test_llm_request_contract(expect_final):
 
 @pytest.mark.parametrize("profile,recipes,validated", product([False, True], repeat=3))
 def test_session_state(profile, recipes, validated):
-    state = agent.AgentSessionState(profile, recipes, "hash" if validated else None)
+    state = AgentSessionState(profile, recipes, "hash" if validated else None)
     assert state.ready_for_final() == (profile and recipes and validated)
     assert state.missing_steps() == [
         name

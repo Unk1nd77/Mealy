@@ -8,7 +8,9 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.core.agent import orchestrator as agent
+from app.core.agent import orchestrator
+from app.core.agent import runtime as agent
+from app.core.rag import retriever
 from tests.test_orchestrator import _user_profile
 
 
@@ -109,7 +111,9 @@ async def test_provenance_before_backend_validation(monkeypatch, profile, plan_d
             final(plan_data),
         ],
     )
-    with patch.object(agent, "validate_day_plan", wraps=agent.validate_day_plan) as validate:
+    with patch.object(
+        agent.validator, "validate_day_plan", wraps=agent.validator.validate_day_plan
+    ) as validate:
         result = await agent._run_agentic_loop(profile, AsyncMock())
     assert result.attempts_used == 5
     assert "not returned by search_recipes" in snapshots[3][0][-1]["content"]
@@ -133,7 +137,9 @@ async def test_parse_feedback(monkeypatch, profile, plan_data, search_mock, bad_
 async def test_backend_is_quality_authority(monkeypatch, profile, plan_data, search_mock):
     fake_llm(monkeypatch, [*setup_calls(plan_data), final(plan_data)])
     with patch.object(
-        agent, "validate_day_plan", side_effect=[(True, None), (False, "backend rejected")]
+        agent.validator,
+        "validate_day_plan",
+        side_effect=[(True, None), (False, "backend rejected")],
     ):
         result = await agent._run_agentic_loop(profile, AsyncMock())
     assert (
@@ -233,7 +239,7 @@ async def test_public_entry_closes_session(monkeypatch, profile, plan_data, sear
 
     monkeypatch.setattr(agent, "async_session", session_factory)
     fake_llm(monkeypatch, [*setup_calls(plan_data), final(plan_data)])
-    result = await agent.generate_day_plan(profile, [])
+    result = await agent.generate_day_plan(profile)
     assert result.quality_status == "valid" and sessions == ["open", "closed"]
 
 
@@ -270,9 +276,7 @@ async def test_trace_covers_every_call(names):
     ]
     with (
         patch.object(agent, "_call_llm_with_tools", new_callable=AsyncMock, side_effect=responses),
-        patch.object(
-            agent.retriever, "search_recipes", new_callable=AsyncMock, return_value=_recipes()
-        ),
+        patch.object(retriever, "search_recipes", new_callable=AsyncMock, return_value=_recipes()),
     ):
         result = await agent._run_agentic_loop(_user_profile(), AsyncMock())
     assert len(result.tool_call_trace) == len(names) + 3
@@ -298,12 +302,12 @@ async def test_summary_and_mode_logs(monkeypatch, profile):
             for name in ("get_user_profile", "search_recipes", "validate_day_plan")
         )
         monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
-        monkeypatch.setattr(agent, "_run_pipeline", AsyncMock())
-        await agent.generate_day_plan(profile, [])
+        monkeypatch.setattr(orchestrator, "_run_pipeline", AsyncMock())
+        await orchestrator.generate_day_plan(profile, [])
         assert any("mode=pipeline" in line for line in logs)
         monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", True)
         monkeypatch.setattr(agent, "_run_agentic_loop", AsyncMock())
-        await agent.generate_day_plan(profile, [])
+        await orchestrator.generate_day_plan(profile, [])
         assert any("mode=tool_use" in line for line in logs)
     finally:
         agent.logger.remove(sink)

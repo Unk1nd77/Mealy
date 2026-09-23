@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock
 import pytest
 from hypothesis import HealthCheck, settings
 
-from app.core.agent import orchestrator as agent
+from app.core.agent import runtime as agent
+from app.core.rag import retriever
 from tests.test_orchestrator import _recipes, _user_profile, _valid_llm_json
 
 settings.register_profile("ci", max_examples=200, suppress_health_check=[HealthCheck.too_slow])
@@ -48,5 +49,5 @@ def executor(profile):
 @pytest.fixture
 def search_mock(monkeypatch, recipes):
     mock = AsyncMock(return_value=recipes)
-    monkeypatch.setattr(agent.retriever, "search_recipes", mock)
+    monkeypatch.setattr(retriever, "search_recipes", mock)
     return mock
