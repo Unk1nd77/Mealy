@@ -18,6 +18,7 @@ from loguru import logger
 
 from app.core.canonical_pipeline import create_plan_record, finalize_plan_record, load_user_profile
 from app.core.generation_meta import PIPELINE_STEPS, build_generation_meta
+from app.core.meal_compatibility import recipe_matches_slot, slot_compatible_types
 from app.core.skills.aggregator import aggregate_shopping_list
 from app.core.skills.validator import validate_day_plan
 from app.db.models import DEFAULT_MEAL_SCHEDULE, MealPlanStatus
@@ -30,29 +31,12 @@ def _empty_steps() -> list[dict[str, Any]]:
     return [{"key": step, "status": "pending", "message": ""} for step in PIPELINE_STEPS]
 
 
-def _normalize_meal_type(value: str | None) -> set[str]:
-    if not value:
-        return set()
-    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
-
-
 def _slot_compatible_types(slot_type: str) -> set[str]:
-    if slot_type == "breakfast":
-        return {"breakfast"}
-    if slot_type == "snack":
-        return {"snack", "second_snack"}
-    if slot_type == "lunch":
-        return {"lunch", "lunch/dinner", "universal"}
-    if slot_type == "dinner":
-        return {"dinner", "lunch/dinner", "universal"}
-    return {slot_type}
+    return slot_compatible_types(slot_type, policy="demo")
 
 
 def _recipe_matches_slot(recipe: dict[str, Any], slot_type: str) -> bool:
-    recipe_types = _normalize_meal_type(recipe.get("meal_type"))
-    if not recipe_types:
-        return False
-    return bool(recipe_types & _slot_compatible_types(slot_type))
+    return recipe_matches_slot(recipe, slot_type, policy="demo")
 
 
 def _build_meal(recipe: dict[str, Any], slot: dict[str, Any]) -> dict[str, Any]:

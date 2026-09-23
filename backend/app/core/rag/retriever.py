@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.core import cache
 from app.core.embeddings import EmbeddingServiceError, embed_search_query
+from app.core.meal_compatibility import recipe_type_matches
 from app.core.relational_store import load_recipes_from_rows, recipe_to_dict
 from app.db.models import Recipe
 
@@ -368,8 +369,4 @@ async def search_recipes(
 
 def meal_type_matches(recipe: dict, meal_type: str) -> bool:
     recipe_type = _infer_meal_type(recipe.get("tags"), recipe.get("meal_type"))
-    return (
-        recipe_type == meal_type
-        or recipe_type == "universal"
-        or (recipe_type == "lunch/dinner" and meal_type in {"lunch", "dinner"})
-    )
+    return recipe_type_matches(recipe_type, meal_type, policy="retrieval")

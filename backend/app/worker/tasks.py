@@ -9,6 +9,7 @@ from typing import Literal
 from loguru import logger
 
 from app.config import settings
+from app.core.agent.generation import GeneratedPlanDraft, generate_days
 from app.core.agent_cli_runtime import run_agent_cli_pipeline
 from app.core.canonical_pipeline import (
     create_plan_record,
@@ -18,7 +19,7 @@ from app.core.canonical_pipeline import (
 )
 from app.core.catalog_agent_runtime import run_catalog_agent_pipeline
 from app.core.catalog_agents import build_research_agent, build_verification_agent
-from app.core.generation_meta import PIPELINE_STEPS, build_generation_meta
+from app.core.generation_meta import _empty_steps, _set_step, build_generation_meta
 from app.core.relational_store import finalize_generation_run_by_task_id
 from app.core.source_discovery import DiscoverySourceOutput
 from app.core.source_discovery_runtime import run_source_discovery_pipeline
@@ -44,27 +45,6 @@ def _run_async(coro):
 
     asyncio.set_event_loop(_worker_loop)
     return _worker_loop.run_until_complete(coro)
-
-
-def _empty_steps() -> list[dict]:
-    return [{"key": step, "status": "pending", "message": ""} for step in PIPELINE_STEPS]
-
-
-def _set_step(
-    state: dict,
-    key: str,
-    *,
-    status: str,
-    message: str,
-    activate: bool = True,
-) -> None:
-    if activate:
-        state["current_step"] = key
-    for step in state["steps"]:
-        if step["key"] == key:
-            step["status"] = status
-            step["message"] = message
-            break
 
 
 def _publish_progress(task, state: dict, *, celery_state: str = "GENERATING") -> None:
@@ -178,27 +158,23 @@ async def _generate(user_id: str, days: int, task=None) -> dict:
             )
             if task is not None:
                 _publish_progress(task, progress_state)
-            all_days = []
-            quality_status = "valid"
-            generation_warnings: list[str] = []
-            day_generation_meta: list[dict] = []
-            for day_num in range(1, days + 1):
-                logger.info("Generating day {}/{} for user {}", day_num, days, user_id)
-                day_result = await generate_day_plan(user_profile, recipes, day_number=day_num)
-                all_days.append(day_result.plan.model_dump())
-                day_generation_meta.append(
-                    {
-                        "day_number": day_num,
-                        "quality_status": day_result.quality_status,
-                        "attempts_used": day_result.attempts_used,
-                        "validation_error": day_result.validation_error,
-                        "tool_call_trace": day_result.tool_call_trace,
-                    }
-                )
-                if day_result.quality_status != "valid":
-                    quality_status = "partially_valid"
-                if day_result.validation_error:
-                    generation_warnings.append(f"Day {day_num}: {day_result.validation_error}")
+
+            async def load_context(day_number: int) -> dict:
+                logger.info("Generating day {}/{} for user {}", day_number, days, user_id)
+                return {"user": user_profile, "available_recipes": recipes}
+
+            draft = await generate_days(
+                days,
+                load_context=load_context,
+                generate_day=generate_day_plan,
+                use_collected_recipes=False,
+                carry_history=False,
+                draft=GeneratedPlanDraft(),
+            )
+            all_days = draft.days
+            quality_status = draft.quality_status
+            generation_warnings = draft.warnings
+            day_generation_meta = draft.day_metadata
             progress_state["quality_status"] = quality_status
             progress_state["warnings"] = generation_warnings
             _set_step(

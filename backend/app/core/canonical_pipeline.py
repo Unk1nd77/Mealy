@@ -11,39 +11,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
 from app.core.embeddings import build_profile_search_query
+from app.core.meal_compatibility import (
+    normalize_meal_type as _normalize_meal_type,
+)
+from app.core.meal_compatibility import (
+    recipe_matches_slot as _recipe_matches_slot,
+)
+from app.core.meal_compatibility import (
+    slot_compatible_types as _slot_compatible_types,
+)
 from app.core.rag.retriever import search_recipes
 from app.core.recipe_catalog import RecipeCatalogError, scale_recipe_payload
 from app.core.relational_store import load_user_profile_from_rows, sync_plan_rows
 from app.db.models import DEFAULT_MEAL_SCHEDULE, MealPlan, MealPlanStatus, User
 
 _SCALING_FACTORS = (1.25, 1.5, 2.0)
-
-
-def _normalize_meal_type(value: str | None) -> set[str]:
-    if not value:
-        return set()
-    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
-
-
-def _slot_compatible_types(slot_type: str) -> set[str]:
-    if slot_type == "breakfast":
-        return {"breakfast"}
-    if slot_type == "snack":
-        return {"snack", "second_snack"}
-    if slot_type == "second_snack":
-        return {"snack", "second_snack"}
-    if slot_type == "lunch":
-        return {"lunch", "lunch/dinner", "universal"}
-    if slot_type == "dinner":
-        return {"dinner", "lunch/dinner", "universal"}
-    return {slot_type}
-
-
-def _recipe_matches_slot(recipe: dict[str, Any], slot_type: str) -> bool:
-    recipe_types = _normalize_meal_type(recipe.get("meal_type"))
-    if not recipe_types:
-        return False
-    return bool(recipe_types & _slot_compatible_types(slot_type))
 
 
 def _augment_recipes_with_scaled_variants(

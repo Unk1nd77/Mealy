@@ -23,3 +23,24 @@ def build_generation_meta(
     if extra:
         payload.update(extra)
     return payload
+
+
+def _empty_steps() -> list[dict[str, Any]]:
+    return [{"key": step, "status": "pending", "message": ""} for step in PIPELINE_STEPS]
+
+
+def _set_step(
+    state: dict[str, Any],
+    key: str,
+    *,
+    status: str,
+    message: str,
+    activate: bool = True,
+) -> None:
+    if activate:
+        state["current_step"] = key
+    for step in state["steps"]:
+        if step["key"] == key:
+            step["status"] = status
+            step["message"] = message
+            break

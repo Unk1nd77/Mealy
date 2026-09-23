@@ -9,6 +9,7 @@ from typing import Any
 from loguru import logger
 
 from app.config import settings
+from app.core.agent.generation import GeneratedPlanDraft, generate_days
 from app.core.agent.orchestrator import generate_day_plan
 from app.core.cli_contract import (
     build_context_payload,
@@ -17,116 +18,12 @@ from app.core.cli_contract import (
     validate_plan_payload,
 )
 from app.core.day_plan_repair import repair_day_plan
-from app.core.generation_meta import PIPELINE_STEPS, build_generation_meta
+from app.core.generation_meta import PIPELINE_STEPS, _empty_steps, _set_step, build_generation_meta
+from app.core.meal_compatibility import slot_compatible_types
+from app.core.recipe_usage import _collect_used_recipe_base_ids, _validate_day_recipe_usage
 
 ProgressCallback = Callable[[dict[str, Any], str], None]
-
-
-def _recipe_base_id(recipe: dict[str, Any]) -> str:
-    base_id = recipe.get("base_recipe_id")
-    if base_id:
-        return str(base_id)
-    recipe_id = str(recipe.get("id"))
-    return recipe_id.split("::", 1)[0]
-
-
-def _meal_base_id(meal: dict[str, Any]) -> str:
-    recipe_id = str(meal.get("recipe_id"))
-    return recipe_id.split("::", 1)[0]
-
-
-def _meal_base_id_from_recipes(
-    meal: dict[str, Any], recipes_by_id: dict[str, dict[str, Any]]
-) -> str:
-    recipe = recipes_by_id.get(str(meal.get("recipe_id")))
-    if recipe is not None:
-        return _recipe_base_id(recipe)
-    return _meal_base_id(meal)
-
-
-def _normalize_meal_type(value: str | None) -> set[str]:
-    if not value:
-        return set()
-    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
-
-
-def _slot_compatible_types(slot_type: str) -> set[str]:
-    if slot_type == "breakfast":
-        return {"breakfast"}
-    if slot_type == "snack":
-        return {"snack", "second_snack"}
-    if slot_type == "second_snack":
-        return {"snack", "second_snack"}
-    if slot_type == "lunch":
-        return {"lunch", "lunch/dinner", "universal"}
-    if slot_type == "dinner":
-        return {"dinner", "lunch/dinner", "universal"}
-    return {slot_type}
-
-
-def _collect_used_recipe_base_ids(
-    *,
-    days: list[dict[str, Any]],
-    recipes_by_day: dict[int, list[dict[str, Any]]],
-) -> set[str]:
-    used: set[str] = set()
-    for day in days:
-        day_number = int(day["day_number"])
-        recipes_by_id = {str(recipe["id"]): recipe for recipe in recipes_by_day.get(day_number, [])}
-        for meal in day.get("meals", []):
-            used.add(_meal_base_id_from_recipes(meal, recipes_by_id))
-    return used
-
-
-def _validate_day_recipe_usage(
-    *,
-    day_plan: dict[str, Any],
-    recipes: list[dict[str, Any]],
-    previous_recipe_base_ids: set[str] | None = None,
-    allow_universal: bool = False,
-) -> str | None:
-    recipes_by_id = {str(recipe["id"]): recipe for recipe in recipes}
-
-    for meal in day_plan.get("meals", []):
-        recipe = recipes_by_id.get(str(meal.get("recipe_id")))
-        if recipe is None:
-            return f"Рецепт {meal.get('recipe_id')} отсутствует в доступном контексте."
-
-        recipe_types = _normalize_meal_type(recipe.get("meal_type"))
-        if not (
-            recipe_types & _slot_compatible_types(str(meal.get("type")))
-            or (allow_universal and "universal" in recipe_types)
-        ):
-            return (
-                f"Рецепт '{recipe.get('title')}' с meal_type={recipe.get('meal_type')} "
-                f"нельзя использовать для слота {meal.get('type')}."
-            )
-
-        if previous_recipe_base_ids and _recipe_base_id(recipe) in previous_recipe_base_ids:
-            return f"Повтор блюда между днями: {recipe.get('title')}"
-
-    return None
-
-
-def _empty_steps() -> list[dict[str, Any]]:
-    return [{"key": step, "status": "pending", "message": ""} for step in PIPELINE_STEPS]
-
-
-def _set_step(
-    state: dict[str, Any],
-    key: str,
-    *,
-    status: str,
-    message: str,
-    activate: bool = True,
-) -> None:
-    if activate:
-        state["current_step"] = key
-    for step in state["steps"]:
-        if step["key"] == key:
-            step["status"] = status
-            step["message"] = message
-            break
+_slot_compatible_types = slot_compatible_types  # Transitional compatibility export.
 
 
 def _emit_progress(
@@ -154,15 +51,8 @@ async def run_agent_cli_pipeline(
         "warnings": [],
     }
     warnings: list[str] = []
-    generated_days: list[dict[str, Any]] = []
-    day_generation_meta: list[dict[str, Any]] = []
     shared_user: dict[str, Any] | None = None
     current_recipes: list[dict[str, Any]] = []
-    recipes_by_day: dict[int, list[dict[str, Any]]] = {}
-    catalog_diagnostics_by_day: dict[int, dict[str, Any]] = {}
-    used_recipe_base_ids: set[str] = set()
-    previous_day_titles: list[str] = []
-    avoid_recipe_base_ids_by_day: dict[int, set[str]] = {}
     tool_use = settings.AGENT_TOOL_USE_ENABLED
 
     async def load_context(day: int) -> dict:
@@ -178,11 +68,9 @@ async def run_agent_cli_pipeline(
             context = await load_context(day_number)
             shared_user = context["user"]
             current_recipes = context["available_recipes"]
-            recipes_by_day[day_number] = current_recipes
-            catalog_diagnostics_by_day[day_number] = context.get("catalog_diagnostics") or {}
             if not current_recipes and not tool_use:
                 raise RuntimeError(f"No recipes available for day {day_number} after filters")
-            diagnostics = catalog_diagnostics_by_day[day_number]
+            diagnostics = context.get("catalog_diagnostics") or {}
             if diagnostics and not diagnostics.get("feasible", True):
                 slot_counts = diagnostics.get("slot_counts") or {}
                 raise RuntimeError(
@@ -205,47 +93,20 @@ async def run_agent_cli_pipeline(
         _set_step(state, "generate", status="running", message=f"Агент собирает план на {days} дн.")
         _emit_progress(progress_callback, state)
 
-        for day_number in range(1, days + 1):
-            context = await load_context(day_number)
-            shared_user = context["user"]
-            day_recipes = sorted(
-                context["available_recipes"],
-                key=lambda recipe: (
-                    _recipe_base_id(recipe) in used_recipe_base_ids,
-                    recipe.get("title", ""),
-                ),
-            )
-            avoid_recipe_base_ids_by_day[day_number] = set(used_recipe_base_ids)
-            catalog_diagnostics_by_day[day_number] = context.get("catalog_diagnostics") or {}
-            recipes_by_day[day_number] = day_recipes
-            day_result = await generate_day_plan(
-                context["user"],
-                day_recipes,
-                day_number=day_number,
-                previous_day_titles=previous_day_titles,
-                avoid_recipe_ids=used_recipe_base_ids,
-            )
-            if tool_use:
-                day_recipes = day_result.collected_recipes
-                recipes_by_day[day_number] = day_recipes
-            generated_days.append(day_result.plan.model_dump())
-            day_generation_meta.append(
-                {
-                    "day_number": day_number,
-                    "quality_status": day_result.quality_status,
-                    "attempts_used": day_result.attempts_used,
-                    "validation_error": day_result.validation_error,
-                    "tool_call_trace": day_result.tool_call_trace,
-                }
-            )
-            if day_result.quality_status != "valid":
-                state["quality_status"] = "partially_valid"
-            if day_result.validation_error:
-                warnings.append(f"Day {day_number}: {day_result.validation_error}")
-            recipes_by_id = {str(recipe["id"]): recipe for recipe in day_recipes}
-            for meal in generated_days[-1].get("meals", []):
-                used_recipe_base_ids.add(_meal_base_id_from_recipes(meal, recipes_by_id))
-                previous_day_titles.append(meal.get("title", ""))
+        draft = await generate_days(
+            days,
+            load_context=load_context,
+            generate_day=generate_day_plan,
+            use_collected_recipes=tool_use,
+            carry_history=True,
+            draft=GeneratedPlanDraft(warnings=warnings),
+        )
+        shared_user = draft.user_profile
+        generated_days = draft.days
+        day_generation_meta = draft.day_metadata
+        recipes_by_day = draft.recipes_by_day
+        avoid_recipe_base_ids_by_day = draft.avoid_recipe_ids_by_day
+        state["quality_status"] = draft.quality_status
 
         _set_step(
             state,
