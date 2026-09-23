@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from app.api.routes import plans
 
@@ -123,6 +124,6 @@ async def test_generate_plan_enqueues_legacy_wire_mode_and_persists_agentic(
 async def test_generate_plan_rejects_unknown_mode_before_publish(monkeypatch):
     send_task = Mock()
     monkeypatch.setattr(plans.celery_app, "send_task", send_task)
-    with pytest.raises(ValueError, match="Unsupported generation mode"):
+    with pytest.raises(ValidationError):
         plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode="unknown")
     send_task.assert_not_awaited()
