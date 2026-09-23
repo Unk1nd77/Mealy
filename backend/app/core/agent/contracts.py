@@ -7,6 +7,9 @@ from app.core.agent.schemas import DayPlanFull
 
 GenerationMode = Literal["agentic", "agent_cli", "llm_direct"]
 GENERATION_TASK_NAME = "generate_meal_plan"
+# Wire compatibility: older workers recognize agent_cli, not agentic.
+# Remove only after all old consumers and pending messages are gone.
+GENERATION_WIRE_MODE: GenerationMode = "agent_cli"
 
 
 def normalize_generation_mode(mode: str) -> Literal["agentic"]:
