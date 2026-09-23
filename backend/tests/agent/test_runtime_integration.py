@@ -25,11 +25,10 @@ def sessions(monkeypatch):
 
 async def test_profile_only_context(monkeypatch, profile, sessions):
     monkeypatch.setattr(plan_services, "load_user_profile", AsyncMock(return_value=profile))
-    search = AsyncMock(side_effect=AssertionError("Eager retrieval is forbidden"))
-    monkeypatch.setattr(plan_services, "load_candidate_recipes", search)
     result = await plan_services.build_context_payload("user", include_recipes=False)
     assert result["user"] == profile and result["available_recipes"] == []
-    search.assert_not_awaited()
+    with pytest.raises(ValueError, match="Eager recipe context"):
+        await plan_services.build_context_payload("user", include_recipes=True)
 
 
 async def test_worker_uses_tools_and_persists_trace(
