@@ -1,10 +1,50 @@
-"""Final day/week validation and deterministic repair shared with the legacy adapter."""
+"""Final agentic day/week validation and deterministic repair."""
+
+from typing import Any
 
 from app.core.agent.generation import GeneratedPlanDraft
-from app.core.cli_contract import validate_plan_payload
+from app.core.agent.schemas import MealPlanOutput
+from app.core.skills.validator import validate_day_plan
 from app.core.day_plan_repair import repair_day_plan
 from app.core.generation_meta import ProgressCallback, _emit_progress, _set_step
 from app.core.recipe_usage import _collect_used_recipe_base_ids, _validate_day_recipe_usage
+
+
+def validate_plan_payload(
+    raw_payload: str | dict[str, Any],
+    *,
+    target_calories: int | None = None,
+    meal_schedule: list[dict[str, Any]] | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Validate one day against its schema, nutrition target and meal schedule."""
+    try:
+        if isinstance(raw_payload, str):
+            output = MealPlanOutput.model_validate_json(raw_payload)
+        else:
+            output = MealPlanOutput.model_validate(raw_payload)
+    except Exception as exc:
+        return {"valid": False, "error": f"Parse error: {exc}"}, 1
+
+    target = target_calories or output.daily_target_calories
+    is_valid, error = validate_day_plan(
+        output.day,
+        target,
+        meal_schedule=meal_schedule,
+    )
+    deviation_pct = (
+        round(abs(output.day.total_calories - target) / target * 100, 1) if target > 0 else None
+    )
+
+    result = {
+        "valid": is_valid,
+        "total_calories": output.day.total_calories,
+        "target_calories": target,
+        "deviation_pct": deviation_pct,
+        "meals_count": len(output.day.meals),
+    }
+    if error:
+        result["error"] = error
+    return result, 0 if is_valid else 1
 
 
 def validate_generated_draft(
@@ -20,12 +60,11 @@ def validate_generated_draft(
     avoid_recipe_base_ids_by_day = draft.avoid_recipe_ids_by_day
     warnings = draft.warnings
     current_recipes = []
-    tool_use = allow_universal
     _set_step(
         state,
         "validate",
         status="running",
-        message="Проверяем итоговые day-планы через CLI contract.",
+        message="Проверяем итоговые day-планы через backend validator.",
     )
     _emit_progress(progress_callback, state)
 
@@ -36,7 +75,7 @@ def validate_generated_draft(
             day_plan=day,
             recipes=recipes_by_day.get(day["day_number"], current_recipes),
             previous_recipe_base_ids=avoid_recipe_base_ids_by_day.get(day["day_number"], set()),
-            allow_universal=tool_use,
+            allow_universal=allow_universal,
         )
         if usage_error:
             error = f"Day {day['day_number']}: {usage_error}"
@@ -135,7 +174,7 @@ def validate_generated_draft(
                 day_plan=repaired_day,
                 recipes=recipes_by_day.get(day_number, current_recipes),
                 previous_recipe_base_ids=effective_avoid_recipe_base_ids,
-                allow_universal=tool_use,
+                allow_universal=allow_universal,
             )
             if usage_error:
                 _set_step(
