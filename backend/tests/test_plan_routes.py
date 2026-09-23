@@ -118,9 +118,10 @@ async def test_generate_plan_enqueues_agentic_and_persists_agentic(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_generate_plan_rejects_unknown_mode_before_publish(monkeypatch):
+@pytest.mark.parametrize("rejected_mode", ["agent_cli", "llm_direct", "unknown"])
+async def test_generate_plan_rejects_legacy_modes_before_publish(monkeypatch, rejected_mode):
     send_task = Mock()
     monkeypatch.setattr(plans.celery_app, "send_task", send_task)
     with pytest.raises(ValidationError):
-        plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode="unknown")
+        plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode=rejected_mode)
     send_task.assert_not_called()
