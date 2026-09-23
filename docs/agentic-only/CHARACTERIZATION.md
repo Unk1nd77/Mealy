@@ -2,6 +2,8 @@
 
 Результат этапа 2 на 2026-09-23: воспроизводимый offline-набор и отдельный disposable PostgreSQL run. Эти проверки фиксируют наблюдаемое поведение baseline, включая дефекты; они не означают, что safety gate пройден.
 
+После [production cutover](PRODUCTION_CUTOVER.md) существующие mode/day-week/error сценарии обновлены под единый use case: aliases возвращают `agentic`, context загружается один раз, неизвестный mode отвергается. Таблицы baseline и прежние 221/3 результаты ниже — исторические evidence, а не описание сегодняшних wrapper expectations. Unsafe witnesses C03/C05/C10/C11 сохраняются. Новые тестовые файлы при cutover не добавлялись.
+
 ## Запуск
 
 Из secret-free worktree без корневого `.env`, с уже подготовленной backend Python environment:

@@ -29,6 +29,8 @@ Baseline 77c6abf, handoff-only HEAD f810bdb. Evidence paths ниже относ�
 
 ## Карта исполнения baseline
 
+Актуальное исполнение после `be48c43`: `POST generate-plan → generate_meal_plan → agent/use_case.generate_meal_plan → generate_days → runtime.generate_day_plan → validation/repair → save`. Старые modes — aliases; unknown mode отвергается; flag не выбирает production runtime. C01/C02/C07 изменены этим cutover; историческое поведение ниже оставлено как baseline evidence. [Совместимость и ограничения](PRODUCTION_CUTOVER.md).
+
 `Frontend → POST generate-plan → Celery generate_meal_plan → _generate_by_mode → [agent_cli_runtime | tasks._generate] → generate_day_plan → [tool loop | _run_pipeline] → finalization → normalized rows/cache → GET plan`.
 
 Отдельно: `demo endpoints → demo_pipeline` и `catalog endpoints → catalog/source Celery tasks → catalog_agent_runtime → admission`. Dynamic registration FastAPI/Celery и CLI — настоящие consumers даже без прямого callsite.
