@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.core import agent_cli_runtime
+from app.core.agent import validation
 from app.core.agent.orchestrator import GeneratedDayResult
 from app.core.agent.schemas import DayPlanFull, MealItemFull
 
@@ -137,7 +138,7 @@ async def test_agent_cli_runtime_returns_ready_and_progress(monkeypatch):
     monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
     monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
     monkeypatch.setattr(
-        agent_cli_runtime,
+        validation,
         "validate_plan_payload",
         lambda *args, **kwargs: ({"valid": True}, 0),
     )
@@ -180,7 +181,7 @@ async def test_agent_cli_runtime_marks_failed_progress_on_validation_error(monke
     monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
     monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
     monkeypatch.setattr(
-        agent_cli_runtime,
+        validation,
         "validate_plan_payload",
         lambda *args, **kwargs: ({"valid": False, "error": "calories mismatch"}, 1),
     )
@@ -290,7 +291,7 @@ async def test_agent_cli_runtime_auto_fixes_duplicate_meal_types(monkeypatch):
 
     monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
     monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
-    monkeypatch.setattr(agent_cli_runtime, "validate_plan_payload", fake_validate)
+    monkeypatch.setattr(validation, "validate_plan_payload", fake_validate)
     monkeypatch.setattr(agent_cli_runtime, "save_plan_payload", fake_save)
     monkeypatch.setattr(
         agent_cli_runtime,
@@ -642,8 +643,8 @@ async def test_agent_cli_runtime_auto_fix_avoids_repeating_previous_day_recipe_w
 
     monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
     monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
-    monkeypatch.setattr(agent_cli_runtime, "validate_plan_payload", fake_validate)
-    monkeypatch.setattr(agent_cli_runtime, "repair_day_plan", fake_repair_day_plan)
+    monkeypatch.setattr(validation, "validate_plan_payload", fake_validate)
+    monkeypatch.setattr(validation, "repair_day_plan", fake_repair_day_plan)
     monkeypatch.setattr(agent_cli_runtime, "save_plan_payload", fake_save)
     monkeypatch.setattr(
         agent_cli_runtime,
@@ -772,11 +773,11 @@ async def test_agent_cli_runtime_auto_fix_uses_repaired_previous_days(monkeypatc
     monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
     monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
     monkeypatch.setattr(
-        agent_cli_runtime,
+        validation,
         "validate_plan_payload",
         lambda *args, **kwargs: ({"valid": True}, 0),
     )
-    monkeypatch.setattr(agent_cli_runtime, "repair_day_plan", fake_repair_day_plan)
+    monkeypatch.setattr(validation, "repair_day_plan", fake_repair_day_plan)
     monkeypatch.setattr(agent_cli_runtime, "save_plan_payload", fake_save)
     monkeypatch.setattr(
         agent_cli_runtime,
@@ -888,11 +889,11 @@ async def test_agent_cli_runtime_auto_fix_relaxes_to_previous_day_uniqueness(mon
     monkeypatch.setattr(agent_cli_runtime, "build_context_payload", fake_context)
     monkeypatch.setattr(agent_cli_runtime, "generate_day_plan", fake_generate)
     monkeypatch.setattr(
-        agent_cli_runtime,
+        validation,
         "validate_plan_payload",
         lambda *args, **kwargs: ({"valid": True}, 0),
     )
-    monkeypatch.setattr(agent_cli_runtime, "repair_day_plan", fake_repair_day_plan)
+    monkeypatch.setattr(validation, "repair_day_plan", fake_repair_day_plan)
     monkeypatch.setattr(agent_cli_runtime, "save_plan_payload", fake_save)
     monkeypatch.setattr(
         agent_cli_runtime,
@@ -904,8 +905,9 @@ async def test_agent_cli_runtime_auto_fix_relaxes_to_previous_day_uniqueness(mon
 
     assert result["status"] == "READY"
     assert result["quality_status"] == "partially_valid"
+
+
 @pytest.fixture(autouse=True)
 def legacy_mode(monkeypatch):
     """Keep legacy CLI pipeline tests independent from the local .env mode."""
     monkeypatch.setattr(agent_cli_runtime.settings, "AGENT_TOOL_USE_ENABLED", False)
-

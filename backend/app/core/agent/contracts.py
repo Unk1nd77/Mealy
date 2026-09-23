@@ -1,8 +1,19 @@
 """Shared day result and agent failures; no runtime or persistence dependencies."""
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from app.core.agent.schemas import DayPlanFull
+
+GenerationMode = Literal["agentic", "agent_cli", "llm_direct"]
+GENERATION_TASK_NAME = "generate_meal_plan"
+
+
+def normalize_generation_mode(mode: str) -> Literal["agentic"]:
+    """Old queued/API mode names are aliases, never alternate runtimes."""
+    if mode not in {"agentic", "agent_cli", "llm_direct"}:
+        raise ValueError(f"Unsupported generation mode: {mode}")
+    return "agentic"
 
 
 class AgentLimitError(Exception):
@@ -18,7 +29,7 @@ class AgentLimitError(Exception):
 
 
 class AgentConfigurationError(Exception):
-    """Raised on configuration errors (e.g. entering agentic loop with AGENT_TOOL_USE_ENABLED=False)."""
+    """Raised when the agentic runtime cannot register its required tools."""
 
 
 @dataclass

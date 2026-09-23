@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+    # Legacy adapters only; production API/Celery always use the agentic runtime.
     AGENT_TOOL_USE_ENABLED: bool = False
     AGENT_MAX_LLM_CALLS: int = Field(default=10, ge=1)
     AGENT_MAX_SEARCH_CALLS: int = Field(default=5, ge=1, le=20)

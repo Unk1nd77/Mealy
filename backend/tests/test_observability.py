@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.api.routes import plans
-from app.core.agent.orchestrator import build_plan_observability
+from app.core.agent.observability import build_plan_observability
 from app.db.models import MealPlanStatus
 
 

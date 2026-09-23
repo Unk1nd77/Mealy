@@ -61,8 +61,6 @@ async def _run_agentic_loop(
     previous_day_titles: list[str] | None = None,
     avoid_recipe_ids: set[str] | None = None,
 ) -> GeneratedDayResult:
-    if not settings.AGENT_TOOL_USE_ENABLED:
-        raise AgentConfigurationError("Agentic loop entered with AGENT_TOOL_USE_ENABLED=False")
     tools = _build_tool_definitions()
     if not tools:
         raise AgentConfigurationError("No agent tools could be registered")

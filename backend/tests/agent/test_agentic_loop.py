@@ -213,13 +213,10 @@ async def test_batch_order(count):
     assert [m["tool_call_id"] for m in seen[1][3:]] == [str(i) for i in range(count)]
 
 
-async def test_disabled_and_empty_registry(monkeypatch, profile):
+async def test_empty_registry_with_legacy_flag_disabled(monkeypatch, profile):
     llm = AsyncMock()
     monkeypatch.setattr(agent, "_call_llm_with_tools", llm)
     monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
-    with pytest.raises(agent.AgentConfigurationError, match="AGENT_TOOL_USE_ENABLED=False"):
-        await agent._run_agentic_loop(profile, AsyncMock())
-    monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", True)
     monkeypatch.setattr(agent, "_build_tool_definitions", list)
     with pytest.raises(agent.AgentConfigurationError):
         await agent._run_agentic_loop(profile, AsyncMock())

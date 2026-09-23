@@ -6,7 +6,6 @@ import uuid
 from datetime import date
 from io import BytesIO
 from pathlib import Path
-from typing import Literal
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -17,7 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
-from app.core.agent.orchestrator import build_plan_observability
+from app.core.agent.contracts import GENERATION_TASK_NAME, GenerationMode, normalize_generation_mode
+from app.core.agent.observability import build_plan_observability
 from app.core.demo_pipeline import create_demo_task, get_demo_task, schedule_demo_pipeline
 from app.core.relational_store import (
     build_plan_data_from_rows,
@@ -47,7 +47,7 @@ PDF_FONT_CANDIDATES = (
 class GeneratePlanRequest(BaseModel):
     user_id: uuid.UUID
     days: int = Field(default=7, ge=1, le=14)
-    mode: Literal["agent_cli", "llm_direct"] = "agent_cli"
+    mode: GenerationMode = "agentic"
 
 
 class GeneratePlanResponse(BaseModel):
@@ -260,14 +260,15 @@ def _build_shopping_list_pdf(plan_id: uuid.UUID, shopping_list: list[dict]) -> b
 
 @router.post("/generate-plan", response_model=GeneratePlanResponse)
 async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(get_db)):
+    mode = normalize_generation_mode(data.mode)
     task = celery_app.send_task(
-        "generate_meal_plan",
-        args=[str(data.user_id), data.days, data.mode],
+        GENERATION_TASK_NAME,
+        args=[str(data.user_id), data.days, mode],
     )
     await create_generation_run(
         db,
         user_id=str(data.user_id),
-        mode=data.mode,
+        mode=mode,
         task_id=task.id,
         status="QUEUED",
     )
@@ -275,7 +276,7 @@ async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(ge
         "Plan generation queued: task_id={} user_id={} mode={}",
         task.id,
         data.user_id,
-        data.mode,
+        mode,
     )
     return GeneratePlanResponse(task_id=task.id)
 

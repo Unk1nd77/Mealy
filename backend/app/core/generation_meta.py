@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from copy import deepcopy
 from typing import Any
+
+ProgressCallback = Callable[[dict[str, Any], str], None]
 
 PIPELINE_STEPS = ["context", "generate", "validate", "auto-fix", "save", "shopping-list"]
 
@@ -44,3 +48,13 @@ def _set_step(
             step["status"] = status
             step["message"] = message
             break
+
+
+def _emit_progress(
+    progress_callback: ProgressCallback | None,
+    state: dict[str, Any],
+    *,
+    celery_state: str = "GENERATING",
+) -> None:
+    if progress_callback is not None:
+        progress_callback(deepcopy(state), celery_state)

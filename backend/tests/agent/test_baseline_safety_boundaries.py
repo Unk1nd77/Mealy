@@ -45,22 +45,28 @@ async def test_baseline_anonymous_plan_cache_read(monkeypatch):
     session.execute.assert_not_awaited()
 
 
-async def test_baseline_broker_publish_precedes_durable_run(monkeypatch):
+@pytest.mark.parametrize("mode", ["agentic", "agent_cli", "llm_direct"])
+async def test_baseline_broker_publish_precedes_durable_run(monkeypatch, mode):
     """C10: write failure leaves an already published message, observed ordering."""
     events = []
 
     def publish(*args, **kwargs):
+        assert args == ("generate_meal_plan",)
+        assert kwargs["args"][1:] == [7, "agentic"]
         events.append("published")
         return SimpleNamespace(id="synthetic-task")
 
     async def persist(*args, **kwargs):
+        assert kwargs["mode"] == "agentic"
         events.append("db-write-attempt")
         raise RuntimeError("synthetic-db-failure")
 
     monkeypatch.setattr(plans.celery_app, "send_task", publish)
     monkeypatch.setattr(plans, "create_generation_run", persist)
     with pytest.raises(RuntimeError, match="synthetic-db-failure"):
-        await plans.generate_plan(plans.GeneratePlanRequest(user_id=uuid.uuid4()), db=AsyncMock())
+        await plans.generate_plan(
+            plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode=mode), db=AsyncMock()
+        )
     assert events == ["published", "db-write-attempt"]
 
 

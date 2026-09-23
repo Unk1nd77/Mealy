@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
-from typing import Literal
 
 from loguru import logger
 
 from app.config import settings
+from app.core.agent.contracts import GENERATION_TASK_NAME, GenerationMode, normalize_generation_mode
 from app.core.agent.generation import GeneratedPlanDraft, generate_days
-from app.core.agent_cli_runtime import run_agent_cli_pipeline
+from app.core.agent.use_case import generate_meal_plan as generate_production_plan
 from app.core.canonical_pipeline import (
     create_plan_record,
     finalize_plan_record,
@@ -309,26 +309,20 @@ async def _generate_by_mode(
     user_id: str,
     days: int,
     *,
-    mode: Literal["agent_cli", "llm_direct"],
+    mode: GenerationMode = "agentic",
     task=None,
     progress_state_holder: dict | None = None,
 ) -> dict:
-    if mode == "agent_cli":
-        return await run_agent_cli_pipeline(
-            user_id=user_id,
-            days=days,
-            progress_callback=(
-                lambda state, celery_state="GENERATING": (
-                    progress_state_holder.__setitem__("state", deepcopy(state))
-                    if progress_state_holder is not None
-                    else None,
-                    _publish_progress(task, state, celery_state=celery_state),
-                )[-1]
-            )
-            if task is not None
-            else None,
-        )
-    return await _generate(user_id, days, task=task)
+    # Keep the old task argument ABI; aliases do not select legacy implementations.
+    normalize_generation_mode(mode)
+
+    def progress(state: dict, celery_state: str = "GENERATING") -> None:
+        if progress_state_holder is not None:
+            progress_state_holder["state"] = deepcopy(state)
+        if task is not None:
+            _publish_progress(task, state, celery_state=celery_state)
+
+    return await generate_production_plan(user_id=user_id, days=days, progress_callback=progress)
 
 
 async def _finalize_generation_task_run(task_id: str, result: dict) -> None:
@@ -449,8 +443,8 @@ async def _run_source_discovery_ingest(
     return payload
 
 
-@celery_app.task(name="generate_meal_plan", bind=True)
-def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agent_cli"):
+@celery_app.task(name=GENERATION_TASK_NAME, bind=True)
+def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agentic"):
     logger.info(
         "Task started: generate_meal_plan user={} days={} mode={}",
         user_id,
@@ -478,7 +472,7 @@ def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agent_cli
         last_state = progress_state_holder.get("state") or {}
         result = {
             "status": "FAILED",
-            "mode": mode,
+            "mode": "agentic",
             "quality_status": "failed",
             "warnings": last_state.get("warnings") or [str(exc)],
             "error": str(exc),
