@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from pydantic import ValidationError
 
 from app.api.routes import plans
-from app.core import canonical_pipeline, day_plan_repair
+from app.core import day_plan_repair, profile_plan_store
 from app.core.rag import retriever
 from app.db.models import MealPlanStatus
 from app.db.session import get_db
@@ -83,13 +83,13 @@ async def test_baseline_cache_failure_occurs_after_db_commit(monkeypatch):
         events.append("cache")
         raise RuntimeError("synthetic-cache-failure")
 
-    monkeypatch.setattr(canonical_pipeline, "sync_plan_rows", sync)
-    monkeypatch.setattr(canonical_pipeline.cache, "set_json", cache_write)
+    monkeypatch.setattr(profile_plan_store, "sync_plan_rows", sync)
+    monkeypatch.setattr(profile_plan_store.cache, "set_json", cache_write)
     session = AsyncMock()
     session.commit.side_effect = commit
     plan = SimpleNamespace(id=uuid.uuid4(), status=MealPlanStatus.generating)
     with pytest.raises(RuntimeError, match="synthetic-cache-failure"):
-        await canonical_pipeline.finalize_plan_record(
+        await profile_plan_store.finalize_plan_record(
             session, plan_record=plan, plan_data={"days": []}, status=MealPlanStatus.ready
         )
     assert events == ["rows", "commit", "cache"]
@@ -109,7 +109,7 @@ def test_api_rejects_unknown_mode():
 
 @pytest.mark.parametrize(
     "module",
-    [canonical_pipeline, day_plan_repair, retriever],
+    [day_plan_repair, retriever],
     ids=lambda m: m.__name__,
 )
 def test_baseline_compatibility_truth_tables(module):
