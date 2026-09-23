@@ -268,7 +268,9 @@ async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(ge
     mode = normalize_generation_mode(data.mode)
     task = celery_app.send_task(
         GENERATION_TASK_NAME,
-        args=[str(data.user_id), data.days, mode],
+        # Old workers only dispatch agent_cli to their CLI path; keep this wire alias
+        # until every worker is upgraded. Persist/report the normalized mode below.
+        args=[str(data.user_id), data.days, GENERATION_WIRE_MODE],
     )
     await create_generation_run(
         db,
