@@ -80,6 +80,30 @@ async def test_early_final_feedback(monkeypatch, profile, plan_data, search_mock
     )
 
 
+
+@pytest.mark.parametrize("float_in_tool", [True, False])
+async def test_equivalent_numeric_json_does_not_invalidate_plan(
+    monkeypatch, profile, plan_data, search_mock, float_in_tool
+):
+    """An int/float formatting difference must not require another LLM round."""
+    tool_plan = deepcopy(plan_data)
+    response_plan = deepcopy(plan_data)
+    numeric_plan = tool_plan if float_in_tool else response_plan
+    numeric_plan["total_calories"] = float(numeric_plan["total_calories"])
+    numeric_plan["meals"][0]["calories"] = float(numeric_plan["meals"][0]["calories"])
+
+    snapshots = fake_llm(
+        monkeypatch, [*setup_calls(tool_plan), final(response_plan)]
+    )
+    result = await agent._run_agentic_loop(profile, AsyncMock())
+
+    assert result.quality_status == "valid"
+    assert result.attempts_used == 3
+    assert len(snapshots) == 3
+    assert result.plan.meals[0].calories == 500
+
+
+
 async def test_hash_mismatch(monkeypatch, profile, plan_data, search_mock):
     changed = deepcopy(plan_data)
     changed["meals"][0]["title"] = "Changed"
