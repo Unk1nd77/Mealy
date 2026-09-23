@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import uuid
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 
 from app.api.routes import plans
@@ -87,3 +91,38 @@ async def test_get_task_status_maps_failure_error(monkeypatch):
     assert response.status == "FAILED"
     assert response.error == "boom"
     assert response.mode == "agent_cli"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("requested_mode", ["agentic", "agent_cli", "llm_direct"])
+async def test_generate_plan_enqueues_legacy_wire_mode_and_persists_agentic(
+    monkeypatch, requested_mode
+):
+    """Mixed rollout: old workers understand agent_cli; new API state stays agentic."""
+    send_task = Mock(return_value=SimpleNamespace(id="task-123"))
+    create_run = AsyncMock()
+    monkeypatch.setattr(plans.celery_app, "send_task", send_task)
+    monkeypatch.setattr(plans, "create_generation_run", create_run)
+    user_id = uuid.uuid4()
+
+    response = await plans.generate_plan(
+        plans.GeneratePlanRequest(user_id=user_id, days=7, mode=requested_mode),
+        db=AsyncMock(),
+    )
+
+    assert response.task_id == "task-123"
+    send_task.assert_called_once_with(
+        plans.GENERATION_TASK_NAME,
+        args=[str(user_id), 7, "agent_cli"],
+    )
+    assert create_run.await_args.kwargs["mode"] == "agentic"
+    assert create_run.await_args.kwargs["task_id"] == "task-123"
+
+
+@pytest.mark.asyncio
+async def test_generate_plan_rejects_unknown_mode_before_publish(monkeypatch):
+    send_task = Mock()
+    monkeypatch.setattr(plans.celery_app, "send_task", send_task)
+    with pytest.raises(ValueError, match="Unsupported generation mode"):
+        plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode="unknown")
+    send_task.assert_not_awaited()
