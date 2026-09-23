@@ -8,6 +8,7 @@ from typing import Any
 
 from loguru import logger
 
+from app.config import settings
 from app.core.agent.orchestrator import generate_day_plan
 from app.core.cli_contract import (
     build_context_payload,
@@ -82,6 +83,7 @@ def _validate_day_recipe_usage(
     day_plan: dict[str, Any],
     recipes: list[dict[str, Any]],
     previous_recipe_base_ids: set[str] | None = None,
+    allow_universal: bool = False,
 ) -> str | None:
     recipes_by_id = {str(recipe["id"]): recipe for recipe in recipes}
 
@@ -91,7 +93,10 @@ def _validate_day_recipe_usage(
             return f"Рецепт {meal.get('recipe_id')} отсутствует в доступном контексте."
 
         recipe_types = _normalize_meal_type(recipe.get("meal_type"))
-        if not recipe_types & _slot_compatible_types(str(meal.get("type"))):
+        if not (
+            recipe_types & _slot_compatible_types(str(meal.get("type")))
+            or (allow_universal and "universal" in recipe_types)
+        ):
             return (
                 f"Рецепт '{recipe.get('title')}' с meal_type={recipe.get('meal_type')} "
                 f"нельзя использовать для слота {meal.get('type')}."
@@ -158,18 +163,24 @@ async def run_agent_cli_pipeline(
     used_recipe_base_ids: set[str] = set()
     previous_day_titles: list[str] = []
     avoid_recipe_base_ids_by_day: dict[int, set[str]] = {}
+    tool_use = settings.AGENT_TOOL_USE_ENABLED
+
+    async def load_context(day: int) -> dict:
+        if tool_use:
+            return await build_context_payload(user_id, day=day, include_recipes=False)
+        return await build_context_payload(user_id, day=day)
 
     try:
         _set_step(state, "context", status="running", message="Готовим CLI-контекст для агента.")
         _emit_progress(progress_callback, state)
 
         for day_number in range(1, days + 1):
-            context = await build_context_payload(user_id, day=day_number)
+            context = await load_context(day_number)
             shared_user = context["user"]
             current_recipes = context["available_recipes"]
             recipes_by_day[day_number] = current_recipes
             catalog_diagnostics_by_day[day_number] = context.get("catalog_diagnostics") or {}
-            if not current_recipes:
+            if not current_recipes and not tool_use:
                 raise RuntimeError(f"No recipes available for day {day_number} after filters")
             diagnostics = catalog_diagnostics_by_day[day_number]
             if diagnostics and not diagnostics.get("feasible", True):
@@ -185,13 +196,17 @@ async def run_agent_cli_pipeline(
             state,
             "context",
             status="completed",
-            message=f"CLI-контекст готов: {len(current_recipes)} рецептов, {days} дн.",
+            message=(
+                f"Профиль готов. Составляем план на {days} дн."
+                if tool_use
+                else f"CLI-контекст готов: {len(current_recipes)} рецептов, {days} дн."
+            ),
         )
         _set_step(state, "generate", status="running", message=f"Агент собирает план на {days} дн.")
         _emit_progress(progress_callback, state)
 
         for day_number in range(1, days + 1):
-            context = await build_context_payload(user_id, day=day_number)
+            context = await load_context(day_number)
             shared_user = context["user"]
             day_recipes = sorted(
                 context["available_recipes"],
@@ -210,6 +225,9 @@ async def run_agent_cli_pipeline(
                 previous_day_titles=previous_day_titles,
                 avoid_recipe_ids=used_recipe_base_ids,
             )
+            if tool_use:
+                day_recipes = day_result.collected_recipes
+                recipes_by_day[day_number] = day_recipes
             generated_days.append(day_result.plan.model_dump())
             day_generation_meta.append(
                 {
@@ -217,6 +235,7 @@ async def run_agent_cli_pipeline(
                     "quality_status": day_result.quality_status,
                     "attempts_used": day_result.attempts_used,
                     "validation_error": day_result.validation_error,
+                    "tool_call_trace": day_result.tool_call_trace,
                 }
             )
             if day_result.quality_status != "valid":
@@ -249,6 +268,7 @@ async def run_agent_cli_pipeline(
                 day_plan=day,
                 recipes=recipes_by_day.get(day["day_number"], current_recipes),
                 previous_recipe_base_ids=avoid_recipe_base_ids_by_day.get(day["day_number"], set()),
+                allow_universal=tool_use,
             )
             if usage_error:
                 error = f"Day {day['day_number']}: {usage_error}"
@@ -347,6 +367,7 @@ async def run_agent_cli_pipeline(
                     day_plan=repaired_day,
                     recipes=recipes_by_day.get(day_number, current_recipes),
                     previous_recipe_base_ids=effective_avoid_recipe_base_ids,
+                    allow_universal=tool_use,
                 )
                 if usage_error:
                     _set_step(

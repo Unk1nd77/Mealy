@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.core import catalog_sources
@@ -60,3 +62,40 @@ async def test_resolve_catalog_source_fetches_url(monkeypatch):
     assert resolved.source_snapshot["title"] == "Chicken Bowl"
     assert "Recipe text" in resolved.source_snapshot["html_excerpt"]
     assert resolved.provenance["resolver"] == "http_fetch"
+
+
+def test_build_html_snapshot_parses_json_ld_recipe():
+    recipe = {
+        "@context": "https://schema.org",
+        "@type": "Recipe",
+        "name": "Курица с рисом",
+        "description": "Полезный обед",
+        "recipeIngredient": ["200 г куриное филе", "Рис - 100 г"],
+        "nutrition": {
+            "calories": "520 kcal",
+            "proteinContent": "45 g",
+            "fatContent": "8 g",
+            "carbohydrateContent": "62 g",
+        },
+        "recipeYield": "2 порции",
+        "totalTime": "PT45M",
+        "recipeInstructions": [{"@type": "HowToStep", "text": "Запечь курицу."}],
+    }
+    html = (
+        "<html><head><title>Fallback</title>"
+        f'<script type="application/ld+json">{json.dumps(recipe, ensure_ascii=False)}</script>'
+        "</head><body></body></html>"
+    )
+
+    resolved = catalog_sources._build_html_snapshot("https://example.com/recipe", html)
+    structured = resolved.source_snapshot["structured_recipe"]
+
+    assert resolved.source_snapshot["parser"] == "json_ld"
+    assert resolved.source_snapshot["title"] == "Курица с рисом"
+    assert structured["ingredients"] == [
+        {"name": "куриное филе", "amount": 200.0, "unit": "g", "amount_text": "200 г"},
+        {"name": "Рис", "amount": 100.0, "unit": "g", "amount_text": "100 г"},
+    ]
+    assert structured["nutrition"]["calories"] == 520.0
+    assert structured["prep_time_min"] == 45
+    assert structured["cooking_steps"] == ["Запечь курицу."]

@@ -20,6 +20,7 @@ class DomainPolicy:
     locale: str | None
     aliases: tuple[str, ...]
     methods: tuple[str, ...]
+    search_path_template: str | None
     category_entrypoints: tuple[str, ...]
     recipe_url_patterns: tuple[str, ...]
     recipe_url_regexes: tuple[str, ...]
@@ -57,6 +58,7 @@ def load_source_policy() -> SourcePolicy:
                     _normalize_domain(alias) for alias in (item.get("aliases") or []) if alias
                 ),
                 methods=tuple(item.get("methods") or ()),
+                search_path_template=item.get("search_path_template"),
                 category_entrypoints=_normalize_patterns(item.get("category_entrypoints")),
                 recipe_url_patterns=_normalize_patterns(item.get("recipe_url_patterns")),
                 recipe_url_regexes=_normalize_patterns(item.get("recipe_url_regexes")),

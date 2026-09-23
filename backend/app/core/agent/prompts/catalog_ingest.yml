@@ -38,8 +38,23 @@ research_user: |
 
   {{ seed_input_json }}
 
+research_repair: |
+  The deterministic validation tool rejected the draft below. Repair it using only
+  the supplied source evidence. Do not invent missing facts. Return the complete
+  research-agent JSON object again.
+
+  SOURCE INPUT:
+  {{ seed_input_json }}
+
+  REJECTED DRAFT:
+  {{ draft_json }}
+
+  TOOL REPORT:
+  {{ validation_json }}
+
 verify_user: |
-  Review this recipe candidate.
+  Review this recipe candidate. Treat agent_tools.grounding as authoritative:
+  ACCEPT is forbidden when supported=false, except for internal_curated_seed.
   Return JSON only.
 
   {{ candidate_json }}

@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
+from app.core.embeddings import build_profile_search_query
 from app.core.rag.retriever import search_recipes
 from app.core.recipe_catalog import RecipeCatalogError, scale_recipe_payload
 from app.core.relational_store import load_user_profile_from_rows, sync_plan_rows
@@ -230,6 +231,7 @@ async def load_candidate_recipes(
         dislikes=user_profile.get("disliked_ingredients"),
         preferred_tags=user_profile.get("preferences"),
         diseases=user_profile.get("diseases"),
+        semantic_query=build_profile_search_query(user_profile),
         limit=max(limit * 3, limit),
     )
     candidate_pool = _augment_recipes_with_scaled_variants(

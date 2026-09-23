@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote_plus, urljoin, urlparse
 
 import httpx
 from loguru import logger
@@ -21,6 +22,8 @@ _LOC_RE = re.compile(r"<loc>\s*(.*?)\s*</loc>", re.IGNORECASE)
 _SITEMAP_RE = re.compile(r"^\s*Sitemap:\s*(\S+)\s*$", re.IGNORECASE | re.MULTILINE)
 _HREF_RE = re.compile(r"""href=["']([^"'#]+)["']""", re.IGNORECASE)
 _URL_TOKEN_RE = re.compile(r"""(?:(?:https?://)[^\s"'<>]+|/[A-Za-z0-9_./?%:#=&+-]+)""")
+_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_QUERY_TOKEN_RE = re.compile(r"[a-zа-яё0-9]+", re.IGNORECASE)
 
 
 async def _fetch_text(url: str) -> str:
@@ -30,6 +33,41 @@ async def _fetch_text(url: str) -> str:
         response = await client.get(url)
         response.raise_for_status()
         return response.text[: settings.CATALOG_SOURCE_MAX_BYTES]
+
+
+def _query_stems(query: str | None) -> list[str]:
+    return [
+        token.lower()[: max(4, len(token) - 2)]
+        for token in _QUERY_TOKEN_RE.findall(query or "")
+        if len(token) >= 4
+    ]
+
+
+async def _rank_urls_by_query(urls: list[str], query: str | None) -> list[str]:
+    """Fetch a bounded set of titles and remove unrelated fallback URLs."""
+    stems = _query_stems(query)
+    if not stems:
+        return urls
+    semaphore = asyncio.Semaphore(6)
+
+    async def score(position: int, url: str) -> tuple[int, int, str]:
+        url_score = sum(stem in url.lower() for stem in stems) * 3
+        title_score = 0
+        try:
+            async with semaphore:
+                html = await _fetch_text(url)
+            title_match = _TITLE_RE.search(html)
+            title = title_match.group(1).lower() if title_match else ""
+            title_score = sum(stem in title for stem in stems) * 5
+        except Exception as exc:
+            logger.debug("Could not inspect candidate title {}: {}", url, exc)
+        return url_score + title_score, position, url
+
+    inspected = urls[: min(len(urls), 30)]
+    scored = await asyncio.gather(*(score(index, url) for index, url in enumerate(inspected)))
+    relevant = [item for item in scored if item[0] > 0]
+    relevant.sort(key=lambda item: (-item[0], item[1]))
+    return [url for _, _, url in relevant]
 
 
 def _extract_sitemap_urls(robots_txt: str) -> list[str]:
@@ -97,7 +135,9 @@ async def _discover_from_sitemaps(
                 return discovered
     if discovered:
         return discovered
-    return fallback_candidates[: load_source_policy().max_pages_per_domain]
+    return await _rank_urls_by_query(
+        fallback_candidates[: load_source_policy().max_pages_per_domain], query
+    )
 
 
 async def _discover_from_category_pages(
@@ -142,7 +182,32 @@ async def _discover_from_category_pages(
                 break
     if discovered:
         return discovered
-    return fallback_candidates[: load_source_policy().max_pages_per_domain]
+    return await _rank_urls_by_query(
+        fallback_candidates[: load_source_policy().max_pages_per_domain], query
+    )
+
+
+async def _discover_from_search_page(
+    domain_policy: DomainPolicy, *, query: str | None
+) -> list[str]:
+    if not query or not domain_policy.search_path_template:
+        return []
+    path = domain_policy.search_path_template.format(query=quote_plus(query))
+    search_url = urljoin(f"https://{domain_policy.domain}", path)
+    try:
+        html_text = await _fetch_text(search_url)
+    except Exception as exc:
+        logger.debug("Skipping search page {}: {}", search_url, exc)
+        return []
+
+    links = _extract_html_links(html_text, base_url=search_url)
+    links.extend(
+        link for link in _extract_embedded_urls(html_text, base_url=search_url) if link not in links
+    )
+    valid_links = [link for link in links if validate_url_against_policy(link)[0]]
+    return await _rank_urls_by_query(
+        valid_links[: load_source_policy().max_pages_per_domain], query
+    )
 
 
 async def discover_source_urls(
@@ -162,10 +227,18 @@ async def discover_source_urls(
     for domain_policy in selected:
         discovered_urls: list[str] = []
         discovery_method: str | None = None
-        if "sitemap" in domain_policy.methods:
-            discovered_urls.extend(await _discover_from_sitemaps(domain_policy, query=query))
+        if "search" in domain_policy.methods:
+            discovered_urls.extend(await _discover_from_search_page(domain_policy, query=query))
             if discovered_urls:
-                discovery_method = "sitemap"
+                discovery_method = "search"
+        if "sitemap" in domain_policy.methods:
+            discovered_urls.extend(
+                url
+                for url in await _discover_from_sitemaps(domain_policy, query=query)
+                if url not in discovered_urls
+            )
+            if discovered_urls:
+                discovery_method = discovery_method or "sitemap"
         if not discovered_urls and "category_pages" in domain_policy.methods:
             discovered_urls.extend(await _discover_from_category_pages(domain_policy, query=query))
             if discovered_urls:

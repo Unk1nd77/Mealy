@@ -8,6 +8,7 @@ from typing import Literal
 
 from loguru import logger
 
+from app.config import settings
 from app.core.agent_cli_runtime import run_agent_cli_pipeline
 from app.core.canonical_pipeline import (
     create_plan_record,
@@ -141,14 +142,22 @@ async def _generate(user_id: str, days: int, task=None) -> dict:
         if task is not None:
             _publish_progress(task, progress_state)
         user_profile = await load_user_profile(session, user_id)
-        recipes = await load_candidate_recipes(session, user_profile, limit=30)
-        if not recipes:
+        recipes = (
+            []
+            if settings.AGENT_TOOL_USE_ENABLED
+            else await load_candidate_recipes(session, user_profile, limit=30)
+        )
+        if not recipes and not settings.AGENT_TOOL_USE_ENABLED:
             raise RuntimeError("No recipes found for this profile after applying filters")
         _set_step(
             progress_state,
             "context",
             status="completed",
-            message=f"Контекст готов: {len(recipes)} рецептов после фильтрации.",
+            message=(
+                "Профиль готов. Подбираем рецепты при составлении плана."
+                if settings.AGENT_TOOL_USE_ENABLED
+                else f"Контекст готов: {len(recipes)} рецептов после фильтрации."
+            ),
         )
 
         plan_record = await create_plan_record(
@@ -183,6 +192,7 @@ async def _generate(user_id: str, days: int, task=None) -> dict:
                         "quality_status": day_result.quality_status,
                         "attempts_used": day_result.attempts_used,
                         "validation_error": day_result.validation_error,
+                        "tool_call_trace": day_result.tool_call_trace,
                     }
                 )
                 if day_result.quality_status != "valid":
@@ -421,6 +431,7 @@ async def _run_source_discovery_ingest(
         "recipe_id": None,
         "reason_codes": [],
         "error": None,
+        "items": [],
     }
 
     def _on_progress(state: dict[str, object]) -> None:
@@ -449,6 +460,7 @@ async def _run_source_discovery_ingest(
         "recipe_id": result.recipe_id,
         "reason_codes": result.reason_codes or [],
         "error": result.error,
+        "items": result.items or [],
         "steps": result.steps or _empty_discovery_steps(),
         "current_step": result.current_step,
     }
@@ -555,6 +567,7 @@ def run_source_discovery_ingest(self, seed_input: dict):
             "recipe_id": last_state.get("recipe_id"),
             "reason_codes": last_state.get("reason_codes") or [],
             "error": str(exc),
+            "items": last_state.get("items") or [],
             "steps": last_state.get("steps") or _empty_discovery_steps(),
             "current_step": last_state.get("current_step"),
         }

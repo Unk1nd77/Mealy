@@ -133,6 +133,8 @@ class Recipe(Base):
     carbs = Column(Float, nullable=False)
 
     embedding = Column(Vector(1536), nullable=True)
+    embedding_model = Column(String(255), nullable=True)
+    embedding_updated_at = Column(DateTime, nullable=True)
     meal_type = Column(String(50), nullable=True)
     ingredients_short = Column(String(500), nullable=True)
     prep_time_min = Column(Integer, nullable=True)

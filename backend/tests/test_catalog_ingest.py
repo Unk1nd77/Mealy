@@ -77,6 +77,8 @@ class _FakeSession:
     async def get(self, model, obj_id):
         if model is catalog_ingest.RecipeCandidate:
             return self.candidates.get(obj_id)
+        if model is catalog_ingest.Recipe:
+            return next((recipe for recipe in self.recipes if recipe.id == obj_id), None)
         return None
 
     async def execute(self, stmt):
@@ -93,6 +95,11 @@ def _patch_models(monkeypatch):
     monkeypatch.setattr(catalog_ingest, "RecipeCandidate", _FakeCandidate)
     monkeypatch.setattr(catalog_ingest, "RecipeCandidateReview", _FakeReview)
     monkeypatch.setattr(catalog_ingest, "Recipe", _FakeRecipe)
+
+    async def fake_embed_recipe(payload):
+        return [0.1] * 1536
+
+    monkeypatch.setattr(catalog_ingest, "embed_recipe", fake_embed_recipe)
 
     async def fake_find_duplicate_recipe(session, *, title, ingredients_short):
         for recipe in session.recipes:
@@ -166,6 +173,7 @@ async def test_review_and_admission_flow_accepts_valid_candidate():
     assert review.verdict == RecipeReviewVerdict.accept
     assert candidate.status == RecipeCandidateStatus.accepted
     assert recipe.title == "Chicken bowl"
+    assert len(recipe.embedding) == 1536
     assert candidate.admitted_recipe_id == recipe.id
 
 
@@ -316,3 +324,31 @@ async def test_admit_recipe_candidate_invalidates_recipe_cache(monkeypatch):
     await catalog_ingest.admit_recipe_candidate(session, candidate_id=str(candidate.id))
 
     assert deleted_keys == ["recipes:all"]
+
+
+@pytest.mark.asyncio
+async def test_update_catalog_recipe_regenerates_embedding(monkeypatch):
+    session = _FakeSession()
+    recipe = _FakeRecipe(id=uuid.uuid4(), title="Old title", embedding=[0.0] * 1536)
+    session.recipes.append(recipe)
+    normalized_calls = []
+
+    async def fake_sync(session_arg, recipe_arg, **kwargs):
+        normalized_calls.append((recipe_arg, kwargs))
+
+    async def fake_delete(key: str):
+        return None
+
+    monkeypatch.setattr(catalog_ingest, "sync_recipe_normalized", fake_sync)
+    monkeypatch.setattr(catalog_ingest.cache, "delete", fake_delete)
+
+    updated = await catalog_ingest.update_catalog_recipe(
+        session,
+        recipe_id=str(recipe.id),
+        payload={**_payload(), "title": "New title"},
+    )
+
+    assert updated.title == "New title"
+    assert updated.embedding == [0.1] * 1536
+    assert updated.embedding_model == catalog_ingest.settings.EMBEDDING_MODEL_NAME
+    assert normalized_calls[0][0] is recipe

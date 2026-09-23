@@ -25,10 +25,11 @@ def validate_day_plan(
     Returns:
         (is_valid, error_message_or_none)
     """
+    errors = []
     if target_calories <= 0:
         msg = f"Некорректный target_calories: {target_calories}"
         logger.warning("Validation: {}", msg)
-        return False, msg
+        errors.append(msg)
 
     total_from_meals = sum(m.calories for m in plan.meals)
 
@@ -38,10 +39,10 @@ def validate_day_plan(
             f"не совпадает с total_calories ({plan.total_calories:.0f})"
         )
         logger.warning("Validation: {}", msg)
-        return False, msg
+        errors.append(msg)
 
     deviation = abs(plan.total_calories - target_calories)
-    deviation_pct = (deviation / target_calories) * 100
+    deviation_pct = (deviation / target_calories) * 100 if target_calories > 0 else 0
 
     if deviation_pct > tolerance_pct:
         msg = (
@@ -50,7 +51,7 @@ def validate_day_plan(
             f"({deviation_pct:.1f}% > {tolerance_pct}%)"
         )
         logger.warning("Validation: {}", msg)
-        return False, msg
+        errors.append(msg)
 
     # Validate required meal types from schedule
     schedule = meal_schedule or DEFAULT_MEAL_SCHEDULE
@@ -61,14 +62,17 @@ def validate_day_plan(
     if missing:
         msg = f"Отсутствуют приёмы пищи из расписания: {', '.join(sorted(missing))}"
         logger.warning("Validation: {}", msg)
-        return False, msg
+        errors.append(msg)
 
     # Check for unexpected duplicates (same type twice)
     meal_types = [m.type for m in plan.meals]
     if len(meal_types) != len(set(meal_types)):
         msg = "Дублируются типы приёмов пищи в рамках одного дня"
         logger.warning("Validation: {}", msg)
-        return False, msg
+        errors.append(msg)
+
+    if errors:
+        return False, "\n".join(errors)
 
     logger.info(
         "Validation passed: {} kcal (target {}, deviation {:.1f}%)",

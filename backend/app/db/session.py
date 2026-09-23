@@ -4,7 +4,7 @@ from sqlalchemy.pool import NullPool
 from app.config import settings
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     echo=settings.DEBUG,
     pool_pre_ping=True,
     # Celery tasks and local tooling can cross asyncio loop boundaries. Reusing

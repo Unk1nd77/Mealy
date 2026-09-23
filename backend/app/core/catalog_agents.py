@@ -12,6 +12,11 @@ from jinja2 import Template
 from pydantic import BaseModel, Field, ValidationError
 
 from app.config import settings
+from app.core.catalog_agent_tools import (
+    inspect_source_evidence,
+    validate_recipe_draft,
+    verify_candidate_grounding,
+)
 from app.core.catalog_ingest import ResearchOutput, VerificationOutput
 from app.core.catalog_sources import resolve_catalog_source
 from app.db.models import RecipeCandidate, RecipeReviewVerdict
@@ -124,6 +129,10 @@ def _repair_recipe_payload_from_snapshot(
             }
             for item in ingredients
         ]
+    if not repaired.get("cooking_steps") and structured.get("cooking_steps"):
+        repaired["cooking_steps"] = structured["cooking_steps"]
+    if not repaired.get("description") and structured.get("description"):
+        repaired["description"] = structured["description"]
     return repaired
 
 
@@ -192,8 +201,13 @@ def build_research_agent():
 
     async def research_agent(seed_input: dict[str, Any]) -> ResearchOutput:
         resolved_source = await resolve_catalog_source(seed_input)
+        evidence_report = inspect_source_evidence(resolved_source.source_snapshot)
+        research_input = {
+            **resolved_source.research_input,
+            "agent_tools": {"source_evidence": evidence_report},
+        }
         user_prompt = templates["research_user"].render(
-            seed_input_json=json.dumps(resolved_source.research_input, ensure_ascii=False, indent=2)
+            seed_input_json=json.dumps(research_input, ensure_ascii=False, indent=2)
         )
         parsed = await _call_llm_json(
             [
@@ -210,12 +224,39 @@ def build_research_agent():
             _coerce_recipe_payload(parsed.payload),
             merged_snapshot,
         )
+        tool_trace: list[dict[str, Any]] = [evidence_report]
+        validation_report = validate_recipe_draft(payload)
+        tool_trace.append(validation_report)
+        for _ in range(max(0, settings.CATALOG_AGENT_MAX_TOOL_ROUNDS - 1)):
+            if validation_report["ok"]:
+                break
+            repair_prompt = templates["research_repair"].render(
+                seed_input_json=json.dumps(research_input, ensure_ascii=False, indent=2),
+                draft_json=json.dumps(payload, ensure_ascii=False, indent=2),
+                validation_json=json.dumps(validation_report, ensure_ascii=False, indent=2),
+            )
+            repaired = await _call_llm_json(
+                [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": repair_prompt},
+                ],
+                CatalogResearchLLMOutput,
+            )
+            payload = _repair_recipe_payload_from_snapshot(
+                _coerce_recipe_payload(repaired.payload), merged_snapshot
+            )
+            validation_report = validate_recipe_draft(payload)
+            tool_trace.append(validation_report)
         return ResearchOutput(
             payload=payload,
             source_url=parsed.source_url or resolved_source.source_url,
             source_type=parsed.source_type or resolved_source.source_type,
             source_snapshot=merged_snapshot,
-            provenance={**resolved_source.provenance, **(parsed.provenance or {})},
+            provenance={
+                **resolved_source.provenance,
+                **(parsed.provenance or {}),
+                "agent_tool_trace": tool_trace,
+            },
             submitted_by=parsed.submitted_by or "catalog_research_llm",
         )
 
@@ -227,6 +268,11 @@ def build_verification_agent():
     system_prompt = templates["verify_system"].render()
 
     async def verification_agent(candidate: RecipeCandidate) -> VerificationOutput:
+        grounding_report = verify_candidate_grounding(
+            candidate.normalized_payload or candidate.payload,
+            candidate.source_snapshot,
+            candidate.provenance,
+        )
         user_prompt = templates["verify_user"].render(
             candidate_json=json.dumps(
                 {
@@ -238,6 +284,7 @@ def build_verification_agent():
                     "payload": candidate.payload,
                     "normalized_payload": candidate.normalized_payload,
                     "validation_report": candidate.validation_report,
+                    "agent_tools": {"grounding": grounding_report},
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -250,12 +297,22 @@ def build_verification_agent():
             ],
             CatalogVerificationLLMOutput,
         )
+        verdict = parsed.verdict
+        reason_codes = list(
+            dict.fromkeys([*parsed.reason_codes, *grounding_report["reason_codes"]])
+        )
+        if verdict == RecipeReviewVerdict.accept and not grounding_report["supported"]:
+            verdict = RecipeReviewVerdict.review
+            reason_codes.append("insufficient_source_grounding")
         return VerificationOutput(
-            verdict=parsed.verdict,
+            verdict=verdict,
             reviewer=parsed.reviewer or "catalog_verifier_llm",
-            reason_codes=parsed.reason_codes,
+            reason_codes=list(dict.fromkeys(reason_codes)),
             notes=parsed.notes,
-            review_payload=parsed.review_payload,
+            review_payload={
+                **(parsed.review_payload or {}),
+                "agent_tool_trace": [grounding_report],
+            },
         )
 
     return verification_agent

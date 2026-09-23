@@ -237,8 +237,14 @@ async def test_build_verification_agent_maps_llm_json(monkeypatch):
     result = await agent(_FakeCandidate())
 
     assert result.verdict == RecipeReviewVerdict.review
-    assert result.reason_codes == ["uncertain_source"]
-    assert result.review_payload == {"confidence": "low"}
+    assert result.reason_codes == [
+        "uncertain_source",
+        "ingredients_weakly_supported",
+        "ingredient_amounts_not_structured",
+        "nutrition_not_structured",
+    ]
+    assert result.review_payload["confidence"] == "low"
+    assert result.review_payload["agent_tool_trace"][0]["supported"] is False
 
 
 @pytest.mark.asyncio

@@ -1,16 +1,22 @@
 """RAG Retriever — поиск рецептов с фильтрацией по аллергенам, предпочтениям и заболеваниям.
 
-Рецепты загружаются из Redis-кеша (или БД при промахе) и фильтруются in-memory.
-Это быстрее SQL ILIKE для малого каталога (48 рецептов) и использует обогащённые поля.
+Сначала PostgreSQL/pgvector ранжирует рецепты по смысловой близости, затем строгие
+детерминированные фильтры исключают аллергены, противопоказания и нелюбимые продукты.
 """
 
 from __future__ import annotations
 
+import httpx
 from loguru import logger
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.core import cache
-from app.core.relational_store import load_recipes_from_rows
+from app.core.embeddings import EmbeddingServiceError, embed_search_query
+from app.core.relational_store import load_recipes_from_rows, recipe_to_dict
+from app.db.models import Recipe
 
 CACHE_KEY = "recipes:all"
 CACHE_TTL = 86400  # 24 hours
@@ -160,6 +166,56 @@ async def _get_all_recipes(session: AsyncSession) -> list[dict]:
     return await _load_all_recipes(session)
 
 
+async def _load_vector_ranked_recipes(
+    session: AsyncSession,
+    *,
+    semantic_query: str,
+) -> list[dict]:
+    query_embedding = await embed_search_query(semantic_query)
+    distance = Recipe.embedding.cosine_distance(query_embedding).label("semantic_distance")
+    stmt = (
+        select(Recipe, distance)
+        .where(Recipe.embedding.is_not(None))
+        .options(
+            selectinload(Recipe.normalized_ingredients),
+            selectinload(Recipe.normalized_tags),
+            selectinload(Recipe.normalized_allergens),
+        )
+        .order_by(distance)
+        .limit(settings.RAG_VECTOR_CANDIDATE_LIMIT)
+    )
+    rows = (await session.execute(stmt)).all()
+    ranked: list[dict] = []
+    for recipe, semantic_distance in rows:
+        item = recipe_to_dict(recipe)
+        item["_semantic_similarity"] = max(0.0, 1.0 - float(semantic_distance))
+        ranked.append(item)
+    return ranked
+
+
+async def _get_hybrid_recipe_order(
+    session: AsyncSession,
+    *,
+    semantic_query: str | None,
+) -> tuple[list[dict], bool]:
+    all_recipes = await _get_all_recipes(session)
+    if not semantic_query:
+        return all_recipes, False
+    try:
+        vector_ranked = await _load_vector_ranked_recipes(
+            session,
+            semantic_query=semantic_query,
+        )
+    except (EmbeddingServiceError, httpx.HTTPError, ValueError) as exc:
+        logger.warning("Vector retrieval unavailable, using deterministic fallback: {}", exc)
+        return all_recipes, False
+
+    seen = {recipe["id"] for recipe in vector_ranked}
+    vector_ranked.extend(recipe for recipe in all_recipes if recipe["id"] not in seen)
+    logger.debug("RAG: vector-ranked {} embedded recipes", len(seen))
+    return vector_ranked, bool(seen)
+
+
 def _expand_disease_rules(diseases: list[str]) -> tuple[list[str], list[str]]:
     exclude_keywords: list[str] = []
     preferred_tags: list[str] = []
@@ -192,14 +248,20 @@ async def search_recipes(
     dislikes: list[str] | None = None,
     preferred_tags: list[str] | None = None,
     diseases: list[str] | None = None,
+    semantic_query: str | None = None,
     limit: int = 30,
+    meal_type: str | None = None,
+    exclude_recipe_ids: set[str] | None = None,
 ) -> list[dict]:
     """Поиск рецептов с in-memory фильтрацией по кешированным данным.
 
     Использует обогащённое поле `allergens` для точной фильтрации аллергенов,
     и `ingredients_short` для фильтрации нелюбимых ингредиентов.
     """
-    all_recipes = await _get_all_recipes(session)
+    all_recipes, vector_ranking_active = await _get_hybrid_recipe_order(
+        session,
+        semantic_query=semantic_query,
+    )
 
     # --- Hard exclusion: allergens ---
     # Normalize Russian allergen names to English codes used in recipe_allergens table.
@@ -221,6 +283,13 @@ async def search_recipes(
     # Apply hard filters
     safe_recipes: list[dict] = []
     for r in all_recipes:
+        if (
+            exclude_recipe_ids
+            and str(r.get("base_recipe_id") or r["id"]).split("::", 1)[0] in exclude_recipe_ids
+        ):
+            continue
+        if meal_type and not meal_type_matches(r, meal_type):
+            continue
         # Filter by allergens: check if any recipe allergen code matches user's codes.
         # Uses both exact match and substring fallback for cross-language robustness.
         recipe_allergens = {a.lower().strip() for a in (r.get("allergens", []) or [])}
@@ -259,6 +328,19 @@ async def search_recipes(
         )
     )
 
+    if vector_ranking_active:
+        ranked = sorted(
+            enumerate(safe_recipes),
+            key=lambda pair: (
+                -(
+                    settings.RAG_VECTOR_WEIGHT * float(pair[1].get("_semantic_similarity", -1.0))
+                    + settings.RAG_PREFERENCE_WEIGHT
+                    * float(_matches_preferred_tags(pair[1], all_preferred_tags))
+                )
+            ),
+        )
+        return [recipe for _, recipe in ranked[:limit]]
+
     if all_preferred_tags:
         preferred = [r for r in safe_recipes if _matches_preferred_tags(r, all_preferred_tags)]
         if preferred:
@@ -282,3 +364,12 @@ async def search_recipes(
         diseases,
     )
     return safe_recipes[:limit]
+
+
+def meal_type_matches(recipe: dict, meal_type: str) -> bool:
+    recipe_type = _infer_meal_type(recipe.get("tags"), recipe.get("meal_type"))
+    return (
+        recipe_type == meal_type
+        or recipe_type == "universal"
+        or (recipe_type == "lunch/dinner" and meal_type in {"lunch", "dinner"})
+    )

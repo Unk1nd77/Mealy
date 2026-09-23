@@ -100,3 +100,40 @@ async def test_discover_source_urls_falls_back_to_category_pages(monkeypatch):
     assert len(outputs) == 1
     assert outputs[0].url == "https://eda.ru/recepty/supy/borsh-123"
     assert outputs[0].provenance["discovery_method"] == "category_pages"
+
+
+@pytest.mark.asyncio
+async def test_rank_urls_by_query_drops_unrelated_pages(monkeypatch):
+    async def fake_fetch_text(url: str):
+        if url.endswith("chicken"):
+            return "<title>Курица с овощами</title>"
+        return "<title>Домашнее белое вино</title>"
+
+    monkeypatch.setattr(source_harvester, "_fetch_text", fake_fetch_text)
+
+    ranked = await source_harvester._rank_urls_by_query(
+        ["https://example.com/wine", "https://example.com/chicken"],
+        "курица",
+    )
+
+    assert ranked == ["https://example.com/chicken"]
+
+
+@pytest.mark.asyncio
+async def test_discover_from_search_page_returns_relevant_recipe_links(monkeypatch):
+    async def fake_fetch_text(url: str):
+        if "/search?" in url:
+            return """
+            <a href="/recipe/1/kurica-s-risom">Курица</a>
+            <a href="/recipe/2/domashnee-vino">Вино</a>
+            """
+        if "kurica" in url:
+            return "<title>Курица с рисом</title>"
+        return "<title>Домашнее вино</title>"
+
+    monkeypatch.setattr(source_harvester, "_fetch_text", fake_fetch_text)
+    policy = source_harvester.match_domain_policy("gastronom.ru")
+
+    result = await source_harvester._discover_from_search_page(policy, query="курица")
+
+    assert result == ["https://gastronom.ru/recipe/1/kurica-s-risom"]

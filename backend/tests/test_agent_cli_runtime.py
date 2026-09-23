@@ -122,7 +122,7 @@ def _day_result(day_number: int, quality_status: str = "valid") -> GeneratedDayR
 async def test_agent_cli_runtime_returns_ready_and_progress(monkeypatch):
     progress_events: list[tuple[str, dict]] = []
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         return _context(day)
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
@@ -171,7 +171,7 @@ async def test_agent_cli_runtime_returns_ready_and_progress(monkeypatch):
 async def test_agent_cli_runtime_marks_failed_progress_on_validation_error(monkeypatch):
     progress_events: list[tuple[str, dict]] = []
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         return _context(day)
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
@@ -204,7 +204,7 @@ async def test_agent_cli_runtime_marks_failed_progress_on_validation_error(monke
 async def test_agent_cli_runtime_auto_fixes_duplicate_meal_types(monkeypatch):
     progress_events: list[tuple[str, dict]] = []
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         return _context(day)
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
@@ -320,7 +320,7 @@ async def test_agent_cli_runtime_auto_fixes_duplicate_meal_types(monkeypatch):
 async def test_agent_cli_runtime_fails_fast_on_catalog_insufficiency(monkeypatch):
     progress_events: list[tuple[str, dict]] = []
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         context = _context(day)
         context["user"]["target_calories"] = 2600
         context["catalog_diagnostics"] = {
@@ -471,7 +471,7 @@ async def test_agent_cli_runtime_auto_fix_avoids_repeating_previous_day_recipe_w
         },
     }
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         return contexts[day]
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
@@ -701,7 +701,7 @@ async def test_agent_cli_runtime_auto_fix_uses_repaired_previous_days(monkeypatc
         },
     ]
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         return {**base_context, "day_number": day, "available_recipes": recipes}
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
@@ -819,7 +819,7 @@ async def test_agent_cli_runtime_auto_fix_relaxes_to_previous_day_uniqueness(mon
         },
     ]
 
-    async def fake_context(user_id: str, day: int):
+    async def fake_context(user_id: str, day: int, include_recipes: bool = True):
         return {**base_context, "day_number": day, "available_recipes": recipes}
 
     async def fake_generate(user, recipes, day_number: int, **kwargs):
@@ -904,3 +904,8 @@ async def test_agent_cli_runtime_auto_fix_relaxes_to_previous_day_uniqueness(mon
 
     assert result["status"] == "READY"
     assert result["quality_status"] == "partially_valid"
+@pytest.fixture(autouse=True)
+def legacy_mode(monkeypatch):
+    """Keep legacy CLI pipeline tests independent from the local .env mode."""
+    monkeypatch.setattr(agent_cli_runtime.settings, "AGENT_TOOL_USE_ENABLED", False)
+

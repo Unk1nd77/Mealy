@@ -5,12 +5,15 @@ from __future__ import annotations
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core import cache
+from app.core.embeddings import embed_recipe
 from app.core.recipe_catalog import RecipeCatalogError, normalize_recipe_payload
 from app.core.recipe_steps import description_with_cooking_steps
 from app.core.relational_store import sync_recipe_normalized
@@ -171,11 +174,16 @@ async def admit_recipe_candidate(session: AsyncSession, *, candidate_id: str) ->
         ingredients_short=ingredients_short,
     )
     if existing is not None:
+        if existing.embedding is None or existing.embedding_model != settings.EMBEDDING_MODEL_NAME:
+            existing.embedding = await embed_recipe(candidate.normalized_payload)
+            existing.embedding_model = settings.EMBEDDING_MODEL_NAME
+            existing.embedding_updated_at = datetime.utcnow()
         candidate.admitted_recipe_id = existing.id
         await session.commit()
         await cache.delete("recipes:all")
         return existing
 
+    embedding = await embed_recipe(candidate.normalized_payload)
     recipe = Recipe(
         title=title,
         description=description_with_cooking_steps(
@@ -190,7 +198,9 @@ async def admit_recipe_candidate(session: AsyncSession, *, candidate_id: str) ->
         ingredients_short=candidate.normalized_payload.get("ingredients_short"),
         prep_time_min=candidate.normalized_payload.get("prep_time_min"),
         category=candidate.normalized_payload.get("category"),
-        embedding=None,
+        embedding=embedding,
+        embedding_model=settings.EMBEDDING_MODEL_NAME,
+        embedding_updated_at=datetime.utcnow(),
     )
     session.add(recipe)
     await session.flush()
@@ -202,6 +212,46 @@ async def admit_recipe_candidate(session: AsyncSession, *, candidate_id: str) ->
         allergens=candidate.normalized_payload.get("allergens", []),
     )
     candidate.admitted_recipe_id = recipe.id
+    await session.commit()
+    await cache.delete("recipes:all")
+    await session.refresh(recipe)
+    return recipe
+
+
+async def update_catalog_recipe(
+    session: AsyncSession,
+    *,
+    recipe_id: str,
+    payload: dict[str, Any],
+) -> Recipe:
+    """Replace an admitted recipe and regenerate all derived data."""
+    recipe = await session.get(Recipe, uuid.UUID(recipe_id))
+    if recipe is None:
+        raise ValueError(f"Recipe {recipe_id} not found")
+    normalized = normalize_recipe_payload(payload)
+    embedding = await embed_recipe(normalized)
+    recipe.title = normalized["title"]
+    recipe.description = description_with_cooking_steps(
+        normalized.get("description", ""), normalized.get("cooking_steps")
+    )
+    recipe.calories = normalized["calories"]
+    recipe.protein = normalized["protein"]
+    recipe.fat = normalized["fat"]
+    recipe.carbs = normalized["carbs"]
+    recipe.meal_type = normalized.get("meal_type")
+    recipe.ingredients_short = normalized.get("ingredients_short")
+    recipe.prep_time_min = normalized.get("prep_time_min")
+    recipe.category = normalized.get("category")
+    recipe.embedding = embedding
+    recipe.embedding_model = settings.EMBEDDING_MODEL_NAME
+    recipe.embedding_updated_at = datetime.utcnow()
+    await sync_recipe_normalized(
+        session,
+        recipe,
+        ingredients=normalized["ingredients"],
+        tags=normalized.get("tags", []),
+        allergens=normalized.get("allergens", []),
+    )
     await session.commit()
     await cache.delete("recipes:all")
     await session.refresh(recipe)

@@ -122,6 +122,7 @@ cd backend
 uv sync --dev
 uv run alembic upgrade head
 uv run python scripts/seed_recipes.py
+uv run python scripts/backfill_recipe_embeddings.py
 uv run python scripts/seed_demo_user.py
 uv run uvicorn app.main:app --reload --port 8000
 ```
@@ -149,6 +150,18 @@ http://127.0.0.1:4321
 ```
 
 Фронт использует backend как единственный источник профиля, плана, рецептов, списка покупок и статуса генерации.
+
+Каталог использует OpenRouter embeddings и PostgreSQL `pgvector`: сначала HNSW
+ранжирует рецепты по смысловой близости, затем обязательные фильтры исключают
+аллергены, противопоказания и нелюбимые продукты. Проверка полного контура:
+
+```bash
+cd backend
+uv run python scripts/verify_vector_search.py
+```
+
+Административные маршруты `/api/catalog/*` доступны только пользователям, чьи
+email перечислены в `ADMIN_EMAILS`.
 
 ---
 
