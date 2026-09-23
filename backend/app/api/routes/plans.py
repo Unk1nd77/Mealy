@@ -16,7 +16,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
-from app.core.agent.contracts import GENERATION_TASK_NAME, GenerationMode, normalize_generation_mode
+from app.core.agent.contracts import (
+    GENERATION_TASK_NAME,
+    GENERATION_WIRE_MODE,
+    GenerationMode,
+    normalize_generation_mode,
+)
 from app.core.agent.observability import build_plan_observability
 from app.core.demo_pipeline import create_demo_task, get_demo_task, schedule_demo_pipeline
 from app.core.relational_store import (
