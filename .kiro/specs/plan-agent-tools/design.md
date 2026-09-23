@@ -1,5 +1,9 @@
 # Design Document — plan-agent-tools
 
+> Исторический дизайн baseline. Расхождения с фактическим кодом и новая цель
+> agentic-only: [реестр контрактов](../../../docs/agentic-only/CONTRACTS_AND_GAPS.md).
+> Примеры ниже не являются основанием отключать действующие safety checks.
+
 ## Overview
 
 Фича добавляет **tool-using режим** в существующий оркестратор генерации планов питания (`orchestrator.py`).

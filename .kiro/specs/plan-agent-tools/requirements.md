@@ -1,5 +1,10 @@
 # Requirements Document
 
+> Baseline specification: описывает существующий двухрежимный контракт.
+> Цель agentic-only и условия замены Requirement 10 заданы в
+> [TARGET_SPEC.md](../../../docs/agentic-only/TARGET_SPEC.md).
+> До safety gate и cutover прежнее поведение сохраняется.
+
 ## Introduction
 
 Фича переводит агент генерации плана питания с pipeline-архитектуры на полноценный tool-using режим.

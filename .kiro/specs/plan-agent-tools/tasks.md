@@ -1,5 +1,9 @@
 # Implementation Plan: plan-agent-tools
 
+> Выполненные пункты ниже относятся к baseline двухрежимной реализации,
+> не к завершённому agentic-only переходу. Новый статус этапов:
+> [DELIVERY_PLAN.md](../../../docs/agentic-only/DELIVERY_PLAN.md).
+
 ## Проверено 2026-09-19
 
 - Реализованы инструменты, Agentic Loop, guards, лимиты и подключение к Celery/CLI.

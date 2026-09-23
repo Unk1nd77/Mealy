@@ -35,6 +35,7 @@ outputs/*
 scripts/*
 
 docs/*
+!docs/agentic-only/
 
 
 # Node / Astro frontend
