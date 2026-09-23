@@ -1,9 +1,11 @@
-"""Session readiness, exact-draft hashes and trace argument redaction."""
+"""Session readiness, schema-canonical draft hashes and trace argument redaction."""
 
 import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any
+
+from app.core.agent.schemas import DayPlan
 
 _PROFILE_FIELDS = {
     "target_calories",
@@ -29,7 +31,7 @@ class AgentSessionState:
 
     profile_fetched: bool = False
     recipes_fetched: bool = False
-    last_validated_hash: str | None = None  # sha256 of last successfully validated plan JSON
+    last_validated_hash: str | None = None  # sha256 of the validated DayPlan representation
 
     def ready_for_final(self) -> bool:
         return (
@@ -48,7 +50,13 @@ class AgentSessionState:
 
 
 def _compute_plan_hash(plan_data: Any) -> str:
-    canonical = json.dumps(plan_data, sort_keys=True, ensure_ascii=False, allow_nan=False)
+    """Hash the validated day, not raw JSON numeric spelling (e.g. 2000 vs 2000.0).
+
+    Both the tool argument and final response must use this same schema-canonical
+    representation. Actual changes to the validated plan must still change the hash.
+    """
+    normalized = DayPlan.model_validate(plan_data).model_dump(mode="json")
+    canonical = json.dumps(normalized, sort_keys=True, ensure_ascii=False, allow_nan=False)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
