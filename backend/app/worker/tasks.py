@@ -7,19 +7,10 @@ from copy import deepcopy
 
 from loguru import logger
 
-from app.config import settings
-from app.core.agent.contracts import GENERATION_TASK_NAME, GenerationMode, normalize_generation_mode
-from app.core.agent.generation import GeneratedPlanDraft, generate_days
+from app.core.agent.contracts import GENERATION_TASK_NAME
 from app.core.agent.use_case import generate_meal_plan as generate_production_plan
-from app.core.canonical_pipeline import (
-    create_plan_record,
-    finalize_plan_record,
-    load_candidate_recipes,
-    load_user_profile,
-)
 from app.core.catalog_agent_runtime import run_catalog_agent_pipeline
 from app.core.catalog_agents import build_research_agent, build_verification_agent
-from app.core.generation_meta import _empty_steps, _set_step, build_generation_meta
 from app.core.relational_store import finalize_generation_run_by_task_id
 from app.core.source_discovery import DiscoverySourceOutput
 from app.core.source_discovery_runtime import run_source_discovery_pipeline
@@ -98,224 +89,13 @@ def _build_discovery_agent():
     return discovery_agent
 
 
-async def _generate(user_id: str, days: int, task=None) -> dict:
-    from app.core.agent.orchestrator import generate_day_plan
-    from app.core.skills.aggregator import aggregate_shopping_list
-    from app.db.models import MealPlanStatus
-    from app.db.session import async_session
-
-    progress_state = {
-        "mode": "llm_direct",
-        "quality_status": "valid",
-        "current_step": None,
-        "steps": _empty_steps(),
-        "warnings": [],
-    }
-
-    async with async_session() as session:
-        _set_step(
-            progress_state,
-            "context",
-            status="running",
-            message="Загружаем профиль и каталог рецептов.",
-        )
-        if task is not None:
-            _publish_progress(task, progress_state)
-        user_profile = await load_user_profile(session, user_id)
-        recipes = (
-            []
-            if settings.AGENT_TOOL_USE_ENABLED
-            else await load_candidate_recipes(session, user_profile, limit=30)
-        )
-        if not recipes and not settings.AGENT_TOOL_USE_ENABLED:
-            raise RuntimeError("No recipes found for this profile after applying filters")
-        _set_step(
-            progress_state,
-            "context",
-            status="completed",
-            message=(
-                "Профиль готов. Подбираем рецепты при составлении плана."
-                if settings.AGENT_TOOL_USE_ENABLED
-                else f"Контекст готов: {len(recipes)} рецептов после фильтрации."
-            ),
-        )
-
-        plan_record = await create_plan_record(
-            session,
-            user_id=user_id,
-            days=days,
-            status=MealPlanStatus.generating,
-        )
-        plan_id = str(plan_record.id)
-        progress_state["plan_id"] = plan_id
-
-        try:
-            _set_step(
-                progress_state,
-                "generate",
-                status="running",
-                message=f"Генерируем план на {days} дн.",
-            )
-            if task is not None:
-                _publish_progress(task, progress_state)
-
-            async def load_context(day_number: int) -> dict:
-                logger.info("Generating day {}/{} for user {}", day_number, days, user_id)
-                return {"user": user_profile, "available_recipes": recipes}
-
-            draft = await generate_days(
-                days,
-                load_context=load_context,
-                generate_day=generate_day_plan,
-                use_collected_recipes=False,
-                carry_history=False,
-                draft=GeneratedPlanDraft(),
-            )
-            all_days = draft.days
-            quality_status = draft.quality_status
-            generation_warnings = draft.warnings
-            day_generation_meta = draft.day_metadata
-            progress_state["quality_status"] = quality_status
-            progress_state["warnings"] = generation_warnings
-            _set_step(
-                progress_state,
-                "generate",
-                status="completed",
-                message=f"План по дням собран: {len(all_days)} дн.",
-            )
-            _set_step(
-                progress_state,
-                "validate",
-                status="completed",
-                message=(
-                    "Все дни прошли валидацию."
-                    if quality_status == "valid"
-                    else "Часть дней сохранена как partially_valid."
-                ),
-            )
-            _set_step(
-                progress_state,
-                "auto-fix",
-                status="completed" if quality_status != "valid" else "skipped",
-                message=(
-                    "Использован fallback после исчерпания retry."
-                    if quality_status != "valid"
-                    else "Исправления не потребовались."
-                ),
-                activate=False,
-            )
-            if task is not None:
-                _publish_progress(task, progress_state)
-
-            plan_data = {
-                "user_profile": user_profile,
-                "total_days": days,
-                "daily_target_calories": user_profile["target_calories"],
-                "days": all_days,
-                "generation_meta": build_generation_meta(
-                    mode="llm_direct",
-                    quality_status=quality_status,
-                    warnings=generation_warnings,
-                    extra={"days": day_generation_meta},
-                ),
-            }
-
-            _set_step(
-                progress_state,
-                "shopping-list",
-                status="running",
-                message="Проверяем агрегацию списка покупок.",
-            )
-            shopping_list = aggregate_shopping_list(plan_data)
-            _set_step(
-                progress_state,
-                "shopping-list",
-                status="completed",
-                message=f"Список покупок собран: {len(shopping_list)} позиций.",
-            )
-            _set_step(
-                progress_state,
-                "save",
-                status="running",
-                message="Сохраняем план в базу.",
-            )
-            if task is not None:
-                _publish_progress(task, progress_state)
-            await finalize_plan_record(
-                session,
-                plan_record=plan_record,
-                plan_data=plan_data,
-                status=MealPlanStatus.ready,
-            )
-            _set_step(
-                progress_state,
-                "save",
-                status="completed",
-                message=f"План сохранён: {plan_id}.",
-            )
-
-            logger.info("Plan {} generated successfully ({} days)", plan_id, days)
-            if task is not None:
-                _publish_progress(task, progress_state, celery_state="SUCCESS")
-            return {
-                "plan_id": plan_id,
-                "status": "READY",
-                "mode": "llm_direct",
-                "quality_status": quality_status,
-                "warnings": generation_warnings,
-                "steps": deepcopy(progress_state["steps"]),
-                "current_step": progress_state["current_step"],
-            }
-
-        except Exception as e:
-            logger.error("Plan generation failed: {}", e)
-            progress_state["quality_status"] = "failed"
-            progress_state["warnings"] = [str(e)]
-            for step in reversed(progress_state["steps"]):
-                if step["status"] == "running":
-                    step["status"] = "failed"
-                    if not step["message"]:
-                        step["message"] = str(e)
-                    break
-            failed_plan_data = {
-                "error": str(e),
-                "generation_meta": build_generation_meta(
-                    mode="llm_direct",
-                    quality_status="failed",
-                    warnings=[str(e)],
-                ),
-            }
-            await finalize_plan_record(
-                session,
-                plan_record=plan_record,
-                plan_data=failed_plan_data,
-                status=MealPlanStatus.failed,
-            )
-            if task is not None:
-                _publish_progress(task, progress_state)
-            return {
-                "plan_id": plan_id,
-                "status": "FAILED",
-                "mode": "llm_direct",
-                "quality_status": "failed",
-                "warnings": [str(e)],
-                "error": str(e),
-                "steps": deepcopy(progress_state["steps"]),
-                "current_step": progress_state["current_step"],
-            }
-
-
-async def _generate_by_mode(
+async def _generate_agentic(
     user_id: str,
     days: int,
     *,
-    mode: GenerationMode = "agentic",
     task=None,
     progress_state_holder: dict | None = None,
 ) -> dict:
-    # Keep the old task argument ABI; aliases do not select legacy implementations.
-    normalize_generation_mode(mode)
-
     def progress(state: dict, celery_state: str = "GENERATING") -> None:
         if progress_state_holder is not None:
             progress_state_holder["state"] = deepcopy(state)
@@ -454,11 +234,12 @@ def generate_meal_plan(self, user_id: str, days: int = 7, mode: str = "agentic")
     self.update_state(state="GENERATING")
     progress_state_holder: dict[str, dict] = {}
     try:
+        if mode != "agentic":
+            raise ValueError(f"Unsupported generation mode: {mode}")
         result = _run_async(
-            _generate_by_mode(
+            _generate_agentic(
                 user_id,
                 days,
-                mode=mode,
                 task=self,
                 progress_state_holder=progress_state_holder,
             )

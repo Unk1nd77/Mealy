@@ -8,10 +8,9 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.core.agent import orchestrator
 from app.core.agent import runtime as agent
 from app.core.rag import retriever
-from tests.test_orchestrator import _user_profile
+from tests.agent.sample_data import _user_profile
 
 
 def call(name, args=None, call_id=None):
@@ -216,7 +215,6 @@ async def test_batch_order(count):
 async def test_empty_registry_with_legacy_flag_disabled(monkeypatch, profile):
     llm = AsyncMock()
     monkeypatch.setattr(agent, "_call_llm_with_tools", llm)
-    monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
     monkeypatch.setattr(agent, "_build_tool_definitions", list)
     with pytest.raises(agent.AgentConfigurationError):
         await agent._run_agentic_loop(profile, AsyncMock())
@@ -258,7 +256,7 @@ async def test_requested_day_is_preserved(monkeypatch, profile, plan_data, searc
 
 @given(st.lists(st.sampled_from(["get_user_profile", "unknown"]), min_size=1, max_size=10))
 async def test_trace_covers_every_call(names):
-    from tests.test_orchestrator import _recipes, _valid_llm_json
+    from tests.agent.sample_data import _recipes, _valid_llm_json
 
     plan = json.loads(_valid_llm_json())["day"]
     responses = [
@@ -284,7 +282,7 @@ async def test_trace_covers_every_call(names):
         assert "private" not in entry["args_summary"]
 
 
-async def test_summary_and_mode_logs(monkeypatch, profile):
+async def test_summary_logs(monkeypatch, profile):
     logs = []
     sink = agent.logger.add(lambda message: logs.append(str(message)), level="INFO")
     try:
@@ -298,13 +296,5 @@ async def test_summary_and_mode_logs(monkeypatch, profile):
             f"'{name}': 0" in summary
             for name in ("get_user_profile", "search_recipes", "validate_day_plan")
         )
-        monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
-        monkeypatch.setattr(orchestrator, "_run_pipeline", AsyncMock())
-        await orchestrator.generate_day_plan(profile, [])
-        assert any("mode=pipeline" in line for line in logs)
-        monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", True)
-        monkeypatch.setattr(agent, "_run_agentic_loop", AsyncMock())
-        await orchestrator.generate_day_plan(profile, [])
-        assert any("mode=tool_use" in line for line in logs)
     finally:
         agent.logger.remove(sink)

@@ -6,7 +6,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.core.agent import tools as agent
-from tests.test_orchestrator import _user_profile
+from tests.agent.sample_data import _user_profile
 
 
 @given(st.integers(1, 10000), st.lists(st.text(), max_size=5))

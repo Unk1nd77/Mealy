@@ -9,7 +9,7 @@ from copy import deepcopy
 from app.core.agent import runtime
 from app.core.agent.generation import GeneratedPlanDraft, generate_days
 from app.core.agent.validation import validate_generated_draft
-from app.core.cli_contract import (
+from app.core.plan_services import (
     build_context_payload,
     build_shopping_list_payload,
     save_plan_payload,

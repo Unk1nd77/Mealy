@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core import canonical_pipeline, relational_store
 from app.db.models import ActivityLevel, Gender, Goal, MealPlan, MealPlanStatus, Recipe, User
-from tests.test_orchestrator import _valid_llm_json
+from tests.agent.sample_data import _valid_llm_json
 
 pytestmark = pytest.mark.integration
 
@@ -77,7 +77,7 @@ async def storage(monkeypatch):
             "daily_target_calories": 2000,
             "days": [day],
             "generation_meta": {
-                "mode": "agent_cli",
+                "mode": "agentic",
                 "quality_status": "valid",
                 "days": [{"tool_call_trace": [{"tool": "search_recipes"}]}],
             },

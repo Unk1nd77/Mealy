@@ -27,10 +27,7 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SEC: int = 60
     LLM_MAX_OUTPUT_TOKENS: int = 1200
     LLM_MAX_RETRIES: int = 4
-    LLM_CONTEXT_RECIPE_LIMIT: int = 18
-    AGENT_CLI_MIN_CONTEXT_RECIPE_LIMIT: int = 60
-    LLM_RETRY_HISTORY_LIMIT: int = 1
-    LLM_RETRY_RESPONSE_PREVIEW_CHARS: int = 600
+    LLM_RETRY_RESPONSE_PREVIEW_CHARS: int = 600  # Required by catalog agents
     EMBEDDING_MODEL_NAME: str = "openai/text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
     EMBEDDING_BATCH_SIZE: int = 32
@@ -48,8 +45,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    # Legacy adapters only; production API/Celery always use the agentic runtime.
-    AGENT_TOOL_USE_ENABLED: bool = False
     AGENT_MAX_LLM_CALLS: int = Field(default=10, ge=1)
     AGENT_MAX_SEARCH_CALLS: int = Field(default=5, ge=1, le=20)
 

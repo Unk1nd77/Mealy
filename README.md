@@ -2,10 +2,9 @@
 
 ## Архитектурный переход
 
-Цель разработки — **agentic-only** генерация питания. Текущий baseline ещё
-содержит pipeline, два generation mode и demo; production не переключён.
-Спецификация цели, контракты, расхождения и этапы перехода:
-[docs/agentic-only](docs/agentic-only/README.md).
+Генерация питания использует один **agentic-only** use case через FastAPI и Celery.
+Старая генерация и demo удалены из актуального кода; исторические сведения и
+ограничения релиза сохранены в [docs/agentic-only](docs/agentic-only/README.md).
 
 Mealy — приложение в духе **Apple Health / Apple Fitness** для питания, дневного ритма и планирования еды.
 
@@ -130,7 +129,6 @@ uv sync --dev
 uv run alembic upgrade head
 uv run python scripts/seed_recipes.py
 uv run python scripts/backfill_recipe_embeddings.py
-uv run python scripts/seed_demo_user.py
 uv run uvicorn app.main:app --reload --port 8000
 ```
 

@@ -87,7 +87,6 @@ def test_limits_and_config():
     exc = agent.AgentLimitError(10, ["pending-1"])
     assert exc.llm_calls == 10 and exc.pending_tool_call_ids == ["pending-1"]
     assert "10" in str(exc) and "pending-1" in str(exc)
-    assert Settings.model_fields["AGENT_TOOL_USE_ENABLED"].default is False
     for value in [0, 21]:
         with pytest.raises(ValidationError):
             Settings(_env_file=None, AGENT_MAX_SEARCH_CALLS=value)

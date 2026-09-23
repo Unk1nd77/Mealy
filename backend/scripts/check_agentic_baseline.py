@@ -41,7 +41,6 @@ def main():
         "OPENROUTER_API_KEY": "",
         "OPENROUTER_BASE_URL": "http://127.0.0.1:1/blocked",
         "SECRET_KEY": "synthetic-characterization-only",
-        "AGENT_TOOL_USE_ENABLED": "false",
         "DEBUG": "false",
         "DEV_MODE": "false",
         "HYPOTHESIS_STORAGE_DIRECTORY": str(output / "hypothesis"),

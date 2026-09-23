@@ -4,11 +4,10 @@ from unittest.mock import AsyncMock, patch
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.core.agent import orchestrator as agent
-from app.core.agent import runtime
+from app.core.agent.plan_output import _normalize_day_totals
 from app.core.agent.schemas import MealPlanOutput
 from app.core.rag import retriever
-from tests.test_orchestrator import _recipes, _user_profile, _valid_llm_json
+from tests.agent.sample_data import _valid_llm_json
 
 
 @given(
@@ -22,27 +21,9 @@ def test_normalization_and_round_trip(calories):
     output = MealPlanOutput.model_validate_json(_valid_llm_json())
     for meal, value in zip(output.day.meals, calories, strict=True):
         meal.calories = value
-    agent._normalize_day_totals(output.day)
+    _normalize_day_totals(output.day)
     assert output.day.total_calories == round(sum(calories))
     assert output == MealPlanOutput.model_validate(json.loads(output.model_dump_json()))
-
-
-@given(st.integers(1, 100), st.integers(1, 10000))
-async def test_pipeline_compatibility(day, target):
-    output = json.loads(_valid_llm_json())
-    output["daily_target_calories"] = target
-    profile = dict(_user_profile(), target_calories=target)
-    with (
-        patch.object(agent.settings, "AGENT_TOOL_USE_ENABLED", False),
-        patch.object(agent, "_call_llm", new_callable=AsyncMock, return_value=json.dumps(output)),
-        patch.object(agent, "validate_day_plan", return_value=(True, None)),
-        patch.object(
-            runtime, "ToolExecutor", side_effect=AssertionError("must not construct executor")
-        ),
-        patch.object(runtime, "async_session", side_effect=AssertionError("must not open session")),
-    ):
-        result = await agent.generate_day_plan(profile, _recipes(), day)
-    assert result.plan.day_number == day and result.tool_call_trace == []
 
 
 @given(

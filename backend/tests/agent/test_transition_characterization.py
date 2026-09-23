@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from app.core import cli_contract
+from app.core import plan_services
 from app.core.agent import runtime as agent
 from app.core.agent import use_case
 from app.core.rag import retriever
@@ -32,22 +32,14 @@ def runtime_boundaries(monkeypatch, profile):
         sessions.append(session)
         yield session
 
-    for module in (agent, db, cli_contract):
+    for module in (agent, db, plan_services):
         monkeypatch.setattr(module, "async_session", factory)
     context = AsyncMock(return_value={"user": profile, "available_recipes": []})
     saved = AsyncMock(return_value={"plan_id": "saved-plan", "status": "READY"})
-    finalized = AsyncMock()
-    eager = AsyncMock(side_effect=AssertionError("Tool mode must retrieve through tools"))
     monkeypatch.setattr(use_case, "build_context_payload", context)
     monkeypatch.setattr(use_case, "save_plan_payload", saved)
-    monkeypatch.setattr(tasks, "load_user_profile", AsyncMock(return_value=profile))
-    monkeypatch.setattr(tasks, "load_candidate_recipes", eager)
-    monkeypatch.setattr(
-        tasks, "create_plan_record", AsyncMock(return_value=SimpleNamespace(id="saved-plan"))
-    )
-    monkeypatch.setattr(tasks, "finalize_plan_record", finalized)
     return SimpleNamespace(
-        sessions=sessions, context=context, saved=saved, finalized=finalized, eager=eager
+        sessions=sessions, context=context, saved=saved
     )
 
 
@@ -69,24 +61,20 @@ def scripted_days(monkeypatch, plan_data, recipes, days):
     return search, snapshots
 
 
-@pytest.mark.parametrize("mode", ["agentic", "agent_cli", "llm_direct"])
 @pytest.mark.parametrize("days", [1, 7, 14])
 async def test_day_week_and_max_days_use_real_agentic_loop(
-    monkeypatch, plan_data, recipes, runtime_boundaries, mode, days
+    monkeypatch, plan_data, recipes, runtime_boundaries, days
 ):
-    monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
     search, snapshots = scripted_days(monkeypatch, plan_data, recipes, days)
-    result = await tasks._generate_by_mode("owner", days, mode=mode)
+    result = await tasks._generate_agentic("owner", days)
     assert result["status"] == "READY"
     assert result["mode"] == "agentic"
     assert result["quality_status"] == "valid"
     assert search.await_count == days
     assert len(snapshots) == 3 * days
-    runtime_boundaries.eager.assert_not_awaited()
     runtime_boundaries.saved.assert_awaited_once()
     payload = runtime_boundaries.saved.call_args.args[1]
     runtime_boundaries.context.assert_awaited_once_with("owner", include_recipes=False)
-    runtime_boundaries.finalized.assert_not_awaited()
     assert payload["total_days"] == days
     assert [day["day_number"] for day in payload["days"]] == list(range(1, days + 1))
     assert len(payload["generation_meta"]["days"]) == days
@@ -101,16 +89,14 @@ async def test_day_week_and_max_days_use_real_agentic_loop(
         assert all(m["ingredients_summary"] for m in day["meals"])
 
 
-@pytest.mark.parametrize("mode", ["agentic", "agent_cli", "llm_direct"])
 async def test_exhausted_provider_budget_never_saves_ready(
-    monkeypatch, profile, runtime_boundaries, mode
+    monkeypatch, profile, runtime_boundaries
 ):
     monkeypatch.setattr(agent.settings, "AGENT_MAX_LLM_CALLS", 2)
     snapshots = fake_llm(monkeypatch, [httpx.ConnectError("offline")] * 2)
     with pytest.raises(agent.AgentLimitError):
-        await tasks._generate_by_mode("owner", 7, mode=mode)
+        await tasks._generate_agentic("owner", 7)
     runtime_boundaries.saved.assert_not_awaited()
-    runtime_boundaries.finalized.assert_not_awaited()
     assert len(snapshots) == 2
 
 
@@ -166,25 +152,12 @@ async def test_baseline_id_provenance_does_not_make_nutrients_canonical(
     assert sum(recipe["calories"] for recipe in result.collected_recipes) == 4
 
 
-@pytest.mark.parametrize("mode", ["agentic", "agent_cli", "llm_direct"])
 async def test_save_failure_is_not_success(
-    monkeypatch, plan_data, recipes, runtime_boundaries, mode
+    monkeypatch, plan_data, recipes, runtime_boundaries
 ):
     scripted_days(monkeypatch, plan_data, recipes, 1)
     runtime_boundaries.saved.side_effect = RuntimeError("synthetic-write-failure")
     with pytest.raises(RuntimeError, match="synthetic-write-failure"):
-        await tasks._generate_by_mode("owner", 1, mode=mode)
+        await tasks._generate_agentic("owner", 1)
     runtime_boundaries.saved.assert_awaited_once()
-    runtime_boundaries.finalized.assert_not_awaited()
 
-
-async def test_internal_unknown_mode_is_rejected_before_generation(monkeypatch):
-    """Queued legacy aliases are supported, but arbitrary modes cannot select a fallback."""
-    direct = AsyncMock(return_value={"status": "synthetic"})
-    monkeypatch.setattr(tasks, "_generate", direct)
-    production = AsyncMock()
-    monkeypatch.setattr(tasks, "generate_production_plan", production)
-    with pytest.raises(ValueError, match="Unsupported generation mode"):
-        await tasks._generate_by_mode("owner", 1, mode="not-an-api-mode")
-    direct.assert_not_awaited()
-    production.assert_not_awaited()

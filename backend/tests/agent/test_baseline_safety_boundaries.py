@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from pydantic import ValidationError
 
 from app.api.routes import plans
-from app.core import agent_cli_runtime, canonical_pipeline, day_plan_repair, demo_pipeline
+from app.core import canonical_pipeline, day_plan_repair
 from app.core.rag import retriever
 from app.db.models import MealPlanStatus
 from app.db.session import get_db
@@ -45,8 +45,7 @@ async def test_baseline_anonymous_plan_cache_read(monkeypatch):
     session.execute.assert_not_awaited()
 
 
-@pytest.mark.parametrize("mode", ["agentic", "agent_cli", "llm_direct"])
-async def test_baseline_broker_publish_precedes_durable_run(monkeypatch, mode):
+async def test_baseline_broker_publish_precedes_durable_run(monkeypatch):
     """C10: write failure leaves an already published message, observed ordering."""
     events = []
 
@@ -65,7 +64,7 @@ async def test_baseline_broker_publish_precedes_durable_run(monkeypatch, mode):
     monkeypatch.setattr(plans, "create_generation_run", persist)
     with pytest.raises(RuntimeError, match="synthetic-db-failure"):
         await plans.generate_plan(
-            plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode=mode), db=AsyncMock()
+            plans.GeneratePlanRequest(user_id=uuid.uuid4(), mode="agentic"), db=AsyncMock()
         )
     assert events == ["published", "db-write-attempt"]
 
@@ -110,11 +109,11 @@ def test_api_rejects_unknown_mode():
 
 @pytest.mark.parametrize(
     "module",
-    [agent_cli_runtime, canonical_pipeline, day_plan_repair, demo_pipeline, retriever],
+    [canonical_pipeline, day_plan_repair, retriever],
     ids=lambda m: m.__name__,
 )
 def test_baseline_compatibility_truth_tables(module):
-    """150 real helper calls. Disagreements are recorded, not silently reconciled."""
+    """Generation and retrieval retain explicit compatibility policies."""
     ordinary = {
         "breakfast": {"breakfast"},
         "lunch": {"lunch", "universal"},
@@ -123,8 +122,6 @@ def test_baseline_compatibility_truth_tables(module):
         "second_snack": {"snack", "second_snack"},
     }
     expected = {k: set(v) for k, v in ordinary.items()}
-    if module is demo_pipeline:
-        expected["second_snack"] = {"second_snack"}
     if module is retriever:
         expected = {slot: {slot, "universal"} for slot in ordinary}
     for slot in ordinary:

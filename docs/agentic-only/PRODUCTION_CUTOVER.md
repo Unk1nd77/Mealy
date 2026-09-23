@@ -1,4 +1,6 @@
-# API / Celery / frontend: единый agentic use case
+# API / Celery / frontend: единый agentic use case (исторический отчёт до удаления legacy)
+
+**Примечание к актуальной ветке:** описанные ниже алиасы `agent_cli` / `llm_direct` и wire-значение `agent_cli` удалены последующим cleanup. Новая версия принимает только `agentic`. Перед deployment старые workers и несовместимые сообщения должны быть выведены из очереди контролируемо; purge broker не выполнялся. Документ сохранён как историческое evidence.
 
 Дата: 2026-09-23. Ветка: `codex/mealy-agentic-only`. Основание этой порции: `db33c12`.
 

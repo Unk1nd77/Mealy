@@ -6,7 +6,7 @@ behaviour change, not deduplication. Retrieval receives an already inferred type
 
 from typing import Literal
 
-CompatibilityPolicy = Literal["generation", "demo", "retrieval"]
+CompatibilityPolicy = Literal["generation", "retrieval"]
 
 
 def normalize_meal_type(value: str | None) -> set[str]:
@@ -24,7 +24,7 @@ def slot_compatible_types(
         )
     if slot_type in {"lunch", "dinner"}:
         return {slot_type, "lunch/dinner", "universal"}
-    if slot_type == "snack" or (slot_type == "second_snack" and policy != "demo"):
+    if slot_type in {"snack", "second_snack"}:
         return {"snack", "second_snack"}
     return {slot_type}
 
