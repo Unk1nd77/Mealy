@@ -3,8 +3,8 @@
 ## Архитектурный переход
 
 Генерация питания использует один **agentic-only** use case через FastAPI и Celery.
-Старая генерация и demo удалены из актуального кода; исторические сведения и
-ограничения релиза сохранены в [docs/agentic-only](docs/agentic-only/README.md).
+Старый pipeline генерации и demo удалены. Действующий контракт и известные
+ограничения описаны в [docs/agentic-only](docs/agentic-only/README.md).
 
 Mealy — приложение в духе **Apple Health / Apple Fitness** для питания, дневного ритма и планирования еды.
 
@@ -127,10 +127,14 @@ docker compose up -d db redis
 cd backend
 uv sync --dev
 uv run alembic upgrade head
-uv run python scripts/seed_recipes.py
-uv run python scripts/backfill_recipe_embeddings.py
 uv run uvicorn app.main:app --reload --port 8000
 ```
+
+Для генерации нужен допущенный каталог PostgreSQL: он наполняется отдельным
+административным workflow обнаружения и проверки реальных источников через
+`/api/catalog/source-ingest-jobs` (требуется `ADMIN_EMAILS`). При пустом каталоге
+генерация плана не сможет подобрать рецепты. После наполнения выполните
+`uv run python scripts/backfill_recipe_embeddings.py` и проверку векторного поиска.
 
 В отдельном терминале запусти worker генерации:
 

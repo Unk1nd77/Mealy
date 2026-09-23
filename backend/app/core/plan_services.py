@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.canonical_pipeline import (
+from app.core.profile_plan_store import (
     create_plan_record,
     finalize_plan_record,
     load_user_profile,

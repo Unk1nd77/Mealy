@@ -1,3 +1,0 @@
-- rewrite MealyApp - монолитный кусок, распилить в DDD?
-- globals.css - почистить стили
--

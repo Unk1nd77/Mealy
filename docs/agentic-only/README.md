@@ -1,20 +1,9 @@
-# Переход Mealy на agentic-only
+# Agentic-only: действующий контур
 
-Статус: в этой ветке код API/Celery/frontend переведён на единый agentic use case; legacy generation, demo и CLI wrappers удалены. Это изменение репозитория, **не deployment**; известные safety gaps и реальные broker/DB/live-LLM проверки не закрыты. Исторические отчёты ниже описывают состояние до удаления.
+Пользовательский план: FastAPI `/api/generate-plan` → Celery `generate_meal_plan` → `app/core/agent/use_case.py` → `agent/runtime.py` с тремя allowlisted tools (`get_user_profile`, `search_recipes`, `validate_day_plan`) → детерминированная проверка → PostgreSQL. Предварительная выдача рецептов в prompt и pipeline fallback удалены.
 
-- [Целевое поведение](TARGET_SPEC.md)
-- [Контракты, baseline и расхождения](CONTRACTS_AND_GAPS.md)
-- [Этапы и критерии перехода](DELIVERY_PLAN.md)
-- [Characterization и ограничения доказательств](CHARACTERIZATION.md)
-- [Результаты проверок 2026-09-23](VALIDATION_2026-09-23.md)
-- [Выделение runtime: diff, консолидация и границы удаления](RUNTIME_EXTRACTION.md)
-- [Переключение API/worker/frontend и совместимость очереди](PRODUCTION_CUTOVER.md)
+Каталог — **отдельная** административная функция: `/api/catalog/source-ingest-jobs` → Celery → `source_discovery_runtime.py` → `catalog_agent_runtime.py` (research → candidate → verify → admit). Текущий `source_harvester.py` обнаруживает URL программно по allowlist/sitemap/HTML; это ещё не полностью LLM-управляемый поиск. Агент не должен придумывать рецепты без подтверждённого внешнего источника. Пустую БД нужно наполнить через этот workflow до генерации планов.
 
-В целевом исполняемом коде остались один runtime и один use case; `generate_meal_plan` выполняет только agentic. Отчёт PRODUCTION_CUTOVER.md ниже фиксирует исторический промежуточный этап; его описание временных aliases больше не является текущим контрактом. Все старые generation workers и старые сообщения должны быть обработаны **до** развёртывания новой версии.
+Целевая политика и незакрытые release gates: [TARGET_SPEC.md](TARGET_SPEC.md). Статический рефакторинг не равен проверенному production deployment: остаются тесты реальной очереди/БД/LLM, проверка миграций, ownership, canonical nutrients и атомарного сохранения.
 
-Baseline приложения: `77c6abfb6c44a25e7469fdb63f5d65bbb0976490`.
-Основание этой ветки: `f810bdbd844cfb082e108893996e1809afd8e4ab`, добавляющее только исторический `MEALY_BASELINE_HANDOFF.md`. Отдельная ветка разработки: `codex/mealy-agentic-only`. Baseline-ветка и PR #1 не являются веткой очистки.
-
-Исторические `.kiro/specs/plan-agent-tools/{requirements,design,tasks}.md` описывают двухрежимный baseline. [TARGET_SPEC.md](TARGET_SPEC.md) задаёт цель перехода. В production use case Requirement 10 (flag OFF → pipeline) больше не действует; старые adapters и переключатель удалены. Deployment требует отдельного release gate и согласованного обновления workers до API/frontend.
-
-Локальное доказательство исходного аудита: `MEALY_FINAL_AUDIT_HANDOFF.zip`, сформированный 2026-09-23. Не содержит production secrets. Существенная поправка к старому handoff: Git index encrypted backup отличается от старого manifest; project files/Git objects проверены, но полная byte-exact идентичность и восстановление внешней PostgreSQL не подтверждены. Этот архив не является dependency для выполнения тестов.
+Исторические документы доступны в Git до очистки; в рабочем дереве не поддерживаются параллельные версии спецификации.
