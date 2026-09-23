@@ -2,6 +2,8 @@
 
 Baseline 77c6abf, handoff-only HEAD f810bdb. Evidence paths ниже относятся к baseline; после рефакторинга обновлять ссылки. CURRENT не означает безопасно; TARGET не означает реализовано.
 
+После `1ce5d2c` / `6e4877d`: актуальный loop — `agent/runtime.py`, ToolExecutor — `agent/tools.py`, общие compatibility policies — `meal_compatibility.py`, внутренний day/week interface — `agent/generation.py`. Полная [карта переносов и оставшихся adapters](RUNTIME_EXTRACTION.md) заменяет старые пути для навигации по текущему коду. Таблица ниже сохраняет baseline evidence; C03/C05/C09/C10/C11 не закрыты переносом. Для C07 общий loop уже один, но различия adapters сохранены; для C08 дублирование реализации устранено с сохранением трёх наблюдаемых политик.
+
 |ID|Контракт / фактический источник|Текущее поведение|Цель / расхождение|Проверка перед переходом|
 |---|---|---|---|---|
 |C01|`.kiro/.../requirements.md`, Req10; `app/config.py`, `orchestrator.generate_day_plan`|Flag default false; pipeline и tools сосуществуют|Agentic-only после gates; старый Req10 заменяется явно|Оба flags в baseline tests; после cutover OFF не вызывает legacy|
