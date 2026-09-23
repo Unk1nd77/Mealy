@@ -1,7 +1,7 @@
 """One production use case: profile -> tools -> final guards/repair -> save.
 
 HTTP submits this use case through Celery; neither transport selects a runtime.
-Legacy mode names are normalized at the transport boundary, not here.
+Only agentic is accepted at the transport boundary; no legacy fallback exists.
 """
 
 from copy import deepcopy
