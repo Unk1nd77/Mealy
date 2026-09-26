@@ -7,9 +7,11 @@ Only agentic is accepted at the transport boundary; no legacy fallback exists.
 from copy import deepcopy
 
 from app.core.agent import runtime
+from app.core.agent.contracts import InsufficientCatalogError
 from app.core.agent.generation import GeneratedPlanDraft, generate_days
 from app.core.agent.validation import validate_generated_draft
 from app.core.plan_services import (
+    assess_catalog_coverage,
     build_context_payload,
     build_shopping_list_payload,
     save_plan_payload,
@@ -41,6 +43,18 @@ async def generate_meal_plan(
         _set_step(state, "context", status="running", message="Загружаем профиль питания.")
         _emit_progress(progress_callback, state)
         context = await build_context_payload(user_id, include_recipes=False)
+        coverage = await assess_catalog_coverage(context["user"], days=days)
+        if not coverage["feasible"]:
+            missing = ", ".join(coverage.get("missing_slots") or []) or "calorie coverage"
+            _set_step(
+                state,
+                "context",
+                status="failed",
+                message=f"Недостаточное покрытие каталога: {missing}.",
+            )
+            state["warnings"] = [f"Catalog coverage: {coverage}"]
+            _emit_progress(progress_callback, state)
+            raise InsufficientCatalogError(coverage)
         # A single server-owned snapshot for the whole run; each executor copies it.
         context = deepcopy(context)
 
@@ -91,7 +105,7 @@ async def generate_meal_plan(
         return {**deepcopy(state), "status": "READY", "shopping_list": shopping}
     except Exception:
         state["quality_status"] = "failed"
-        state["warnings"] = draft.warnings
+        state["warnings"] = list(dict.fromkeys([*state["warnings"], *draft.warnings]))
         for step in reversed(state["steps"]):
             if step["status"] == "running":
                 step["status"] = "failed"

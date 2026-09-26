@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.core import canonical_pipeline, relational_store
+from app.core import profile_plan_store, relational_store
 from app.db.models import ActivityLevel, Gender, Goal, MealPlan, MealPlanStatus, Recipe, User
 from tests.agent.sample_data import _valid_llm_json
 
@@ -24,7 +24,7 @@ async def storage(monkeypatch):
         pytest.skip("Run check_agentic_baseline.py --database; never use a production DB")
     engine = create_async_engine(url)
     sessions = async_sessionmaker(engine, expire_on_commit=False)
-    monkeypatch.setattr(canonical_pipeline.cache, "set_json", AsyncMock())
+    monkeypatch.setattr(profile_plan_store.cache, "set_json", AsyncMock())
     try:
         async with sessions() as session:
             user = User(
@@ -68,7 +68,7 @@ async def storage(monkeypatch):
                     {"name": "synthetic rice", "amount": 100, "unit": "g"}
                 ]
             await session.commit()
-            plan = await canonical_pipeline.create_plan_record(
+            plan = await profile_plan_store.create_plan_record(
                 session, user_id=str(user.id), days=1
             )
             plan_id = plan.id
@@ -92,7 +92,7 @@ async def test_baseline_roundtrip_keeps_meals_but_loses_generation_metadata(stor
     sessions, plan_id, payload = storage
     async with sessions() as session:
         plan = await session.get(MealPlan, plan_id)
-        await canonical_pipeline.finalize_plan_record(
+        await profile_plan_store.finalize_plan_record(
             session, plan_record=plan, plan_data=payload, status=MealPlanStatus.ready
         )
     async with sessions() as session:
@@ -117,7 +117,7 @@ async def test_db_unique_day_constraint_and_explicit_rollback_preserve_saved_row
     sessions, plan_id, payload = storage
     async with sessions() as session:
         plan = await session.get(MealPlan, plan_id)
-        await canonical_pipeline.finalize_plan_record(
+        await profile_plan_store.finalize_plan_record(
             session, plan_record=plan, plan_data=payload, status=MealPlanStatus.ready
         )
     invalid = deepcopy(payload)
@@ -125,7 +125,7 @@ async def test_db_unique_day_constraint_and_explicit_rollback_preserve_saved_row
     async with sessions() as session:
         plan = await session.get(MealPlan, plan_id)
         with pytest.raises(IntegrityError):
-            await canonical_pipeline.finalize_plan_record(
+            await profile_plan_store.finalize_plan_record(
                 session, plan_record=plan, plan_data=invalid, status=MealPlanStatus.ready
             )
         await session.rollback()

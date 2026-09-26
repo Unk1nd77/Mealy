@@ -25,6 +25,20 @@ class AgentConfigurationError(Exception):
     """Raised when the agentic runtime cannot register its required tools."""
 
 
+class InsufficientCatalogError(Exception):
+    """Raised before LLM generation when the safe recipe pool cannot cover the plan."""
+
+    def __init__(self, diagnostics: dict):
+        self.diagnostics = diagnostics
+        missing = diagnostics.get("missing_slots") or []
+        slot_counts = diagnostics.get("slot_counts") or {}
+        required = diagnostics.get("required_per_slot") or {}
+        details = ", ".join(
+            f"{slot}={slot_counts.get(slot, 0)}/{required.get(slot, 1)}" for slot in missing
+        ) or "calorie range is not feasible"
+        super().__init__(f"Insufficient catalog coverage: {details}")
+
+
 @dataclass
 class GeneratedDayResult:
     plan: DayPlanFull

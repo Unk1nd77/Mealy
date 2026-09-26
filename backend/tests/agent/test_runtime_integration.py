@@ -35,8 +35,10 @@ async def test_worker_uses_tools_and_persists_trace(
     monkeypatch, profile, plan_data, search_mock, sessions
 ):
     context = AsyncMock(return_value={"user": profile, "available_recipes": []})
+    coverage = AsyncMock(return_value={"feasible": True, "missing_slots": []})
     saved = AsyncMock(return_value={"plan_id": "plan-1"})
     monkeypatch.setattr(use_case, "build_context_payload", context)
+    monkeypatch.setattr(use_case, "assess_catalog_coverage", coverage)
     monkeypatch.setattr(use_case, "save_plan_payload", saved)
     assert tasks.generate_meal_plan.name == "generate_meal_plan"
     parameters = signature(tasks.generate_meal_plan.run).parameters
@@ -47,5 +49,6 @@ async def test_worker_uses_tools_and_persists_trace(
     result = await tasks._generate_agentic("user", days=1)
     assert result["status"] == "READY" and result["quality_status"] == "valid"
     assert result["mode"] == "agentic"
+    coverage.assert_awaited_once_with(profile, days=1)
     payload = saved.call_args.args[1]
     assert len(payload["generation_meta"]["days"][0]["tool_call_trace"]) == 3

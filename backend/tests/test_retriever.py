@@ -8,7 +8,6 @@ os.environ["DEBUG"] = "true"
 
 import pytest
 
-from app.core.canonical_pipeline import assess_recipe_pool, select_recipes_for_generation
 from app.core.rag import retriever
 
 
@@ -115,9 +114,9 @@ async def test_vector_ranking_never_bypasses_allergen_filter(monkeypatch):
     assert [recipe["id"] for recipe in result] == ["safe"]
 
 
-def test_select_recipes_for_generation_preserves_slot_coverage_and_high_calorie_candidates():
+def test_assess_recipe_pool_requires_weekly_adjacent_day_variety_and_calorie_reachability():
     user_profile = {
-        "target_calories": 2600,
+        "target_calories": 2000,
         "meal_schedule": [
             {"type": "breakfast", "time": "08:00", "calories_pct": 25},
             {"type": "lunch", "time": "13:00", "calories_pct": 35},
@@ -126,21 +125,49 @@ def test_select_recipes_for_generation_preserves_slot_coverage_and_high_calorie_
         ],
     }
     recipes = [
-        {"id": "b1", "title": "Breakfast 1", "meal_type": "breakfast", "calories": 300},
-        {"id": "b2", "title": "Breakfast 2", "meal_type": "breakfast", "calories": 450},
-        {"id": "l1", "title": "Lunch 1", "meal_type": "lunch", "calories": 400},
+        {"id": "b1", "title": "Breakfast 1", "meal_type": "breakfast", "calories": 450},
+        {"id": "b2", "title": "Breakfast 2", "meal_type": "breakfast", "calories": 500},
+        {"id": "l1", "title": "Lunch 1", "meal_type": "lunch", "calories": 650},
         {"id": "l2", "title": "Lunch 2", "meal_type": "lunch", "calories": 700},
-        {"id": "d1", "title": "Dinner 1", "meal_type": "dinner", "calories": 350},
-        {"id": "d2", "title": "Dinner 2", "meal_type": "dinner", "calories": 650},
-        {"id": "s1", "title": "Snack 1", "meal_type": "snack", "calories": 120},
-        {"id": "s2", "title": "Snack 2", "meal_type": "snack", "calories": 260},
+        {"id": "d1", "title": "Dinner 1", "meal_type": "dinner", "calories": 550},
+        {"id": "d2", "title": "Dinner 2", "meal_type": "dinner", "calories": 600},
+        {"id": "s1", "title": "Snack 1", "meal_type": "snack", "calories": 180},
+        {"id": "s2", "title": "Snack 2", "meal_type": "snack", "calories": 220},
     ]
 
-    selected = select_recipes_for_generation(recipes, user_profile=user_profile, limit=6)
-    diagnostics = assess_recipe_pool(selected, user_profile=user_profile)
+    diagnostics = retriever.assess_recipe_pool(
+        recipes, user_profile=user_profile, min_recipes_per_slot=2
+    )
 
-    assert all(count >= 1 for count in diagnostics["slot_counts"].values())
-    assert diagnostics["max_achievable_calories"] >= 2060
-    assert any(recipe["id"] == "l2" for recipe in selected)
-    assert any(recipe["id"] == "d2" for recipe in selected)
-    assert any(recipe["id"] == "s2" for recipe in selected)
+    assert diagnostics["feasible"] is True
+    assert diagnostics["missing_slots"] == []
+    assert diagnostics["slot_counts"] == {
+        "breakfast": 2,
+        "lunch": 2,
+        "dinner": 2,
+        "snack": 2,
+    }
+    assert diagnostics["min_achievable_calories"] <= 2100
+    assert diagnostics["max_achievable_calories"] >= 1900
+
+
+def test_assess_recipe_pool_reports_missing_slots():
+    user_profile = {
+        "target_calories": 1900,
+        "meal_schedule": [
+            {"type": "breakfast", "time": "08:00", "calories_pct": 25},
+            {"type": "lunch", "time": "13:00", "calories_pct": 35},
+            {"type": "dinner", "time": "19:00", "calories_pct": 30},
+            {"type": "snack", "time": "16:00", "calories_pct": 10},
+        ],
+    }
+    recipes = [
+        {"id": "s1", "title": "Brownie", "meal_type": "snack", "calories": 676},
+    ]
+
+    diagnostics = retriever.assess_recipe_pool(
+        recipes, user_profile=user_profile, min_recipes_per_slot=1
+    )
+
+    assert diagnostics["feasible"] is False
+    assert diagnostics["missing_slots"] == ["breakfast", "lunch", "dinner"]
