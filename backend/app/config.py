@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     CATALOG_ALLOWED_SOURCE_DOMAINS: str = ""
     CATALOG_MAX_SOURCES_PER_JOB: int = 10
     CATALOG_AGENT_MAX_TOOL_ROUNDS: int = 4
+    CATALOG_AUTO_FILL_ENABLED: bool = True
+    CATALOG_AUTO_FILL_BATCH_SIZE: int = Field(default=3, ge=1, le=10)
+    CATALOG_AUTO_FILL_MAX_SOURCES: int = Field(default=24, ge=1, le=100)
     ADMIN_EMAILS: str = ""
     SECRET_KEY: str = "change-me"
     JWT_ALGORITHM: str = "HS256"

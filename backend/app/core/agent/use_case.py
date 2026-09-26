@@ -10,8 +10,8 @@ from app.core.agent import runtime
 from app.core.agent.contracts import InsufficientCatalogError
 from app.core.agent.generation import GeneratedPlanDraft, generate_days
 from app.core.agent.validation import validate_generated_draft
+from app.core.catalog_maintenance import ensure_catalog_coverage
 from app.core.plan_services import (
-    assess_catalog_coverage,
     build_context_payload,
     build_shopping_list_payload,
     save_plan_payload,
@@ -43,7 +43,18 @@ async def generate_meal_plan(
         _set_step(state, "context", status="running", message="Загружаем профиль питания.")
         _emit_progress(progress_callback, state)
         context = await build_context_payload(user_id, include_recipes=False)
-        coverage = await assess_catalog_coverage(context["user"], days=days)
+
+        def catalog_progress(event: dict) -> None:
+            message = event.get("message")
+            if message:
+                _set_step(state, "context", status="running", message=str(message))
+                _emit_progress(progress_callback, state)
+
+        coverage = await ensure_catalog_coverage(
+            context["user"],
+            days=days,
+            progress_callback=catalog_progress,
+        )
         if not coverage["feasible"]:
             missing = ", ".join(coverage.get("missing_slots") or []) or "calorie coverage"
             _set_step(
@@ -64,7 +75,7 @@ async def generate_meal_plan(
         async def generate_day(profile, recipes, *, day_number, **history):
             return await runtime.generate_day_plan(profile, day_number, **history)
 
-        _set_step(state, "context", status="completed", message="Профиль готов.")
+        _set_step(state, "context", status="completed", message="Профиль и каталог готовы.")
         _set_step(state, "generate", status="running", message=f"Составляем план на {days} дн.")
         _emit_progress(progress_callback, state)
         await generate_days(

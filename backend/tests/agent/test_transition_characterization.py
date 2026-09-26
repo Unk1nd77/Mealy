@@ -37,10 +37,10 @@ def runtime_boundaries(monkeypatch, profile):
     for module in (agent, db, plan_services):
         monkeypatch.setattr(module, "async_session", factory)
     context = AsyncMock(return_value={"user": profile, "available_recipes": []})
-    coverage = AsyncMock(return_value={"feasible": True, "missing_slots": []})
+    coverage = AsyncMock(return_value={"feasible": True, "missing_slots": [], "auto_fill": {}})
     saved = AsyncMock(return_value={"plan_id": "saved-plan", "status": "READY"})
     monkeypatch.setattr(use_case, "build_context_payload", context)
-    monkeypatch.setattr(use_case, "assess_catalog_coverage", coverage)
+    monkeypatch.setattr(use_case, "ensure_catalog_coverage", coverage)
     monkeypatch.setattr(use_case, "save_plan_payload", saved)
     return SimpleNamespace(
         sessions=sessions, context=context, coverage=coverage, saved=saved
@@ -79,7 +79,10 @@ async def test_day_week_and_max_days_use_real_agentic_loop(
     runtime_boundaries.saved.assert_awaited_once()
     payload = runtime_boundaries.saved.call_args.args[1]
     runtime_boundaries.context.assert_awaited_once_with("owner", include_recipes=False)
-    runtime_boundaries.coverage.assert_awaited_once_with(profile, days=days)
+    assert runtime_boundaries.coverage.await_count == 1
+    assert runtime_boundaries.coverage.await_args.args[0] == profile
+    assert runtime_boundaries.coverage.await_args.kwargs["days"] == days
+    assert callable(runtime_boundaries.coverage.await_args.kwargs["progress_callback"])
     assert payload["total_days"] == days
     assert [day["day_number"] for day in payload["days"]] == list(range(1, days + 1))
     assert len(payload["generation_meta"]["days"]) == days

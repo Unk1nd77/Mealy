@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.rag import retriever
 from app.core.profile_plan_store import (
     create_plan_record,
     finalize_plan_record,
@@ -27,17 +26,6 @@ async def build_context_payload(
     async with async_session() as session:
         user = await load_user_profile(session, user_id)
     return {"user": user, "day_number": day, "available_recipes": []}
-
-
-async def assess_catalog_coverage(user_profile: dict[str, Any], *, days: int) -> dict[str, Any]:
-    """Check whether the current safe catalog can support this plan before LLM use."""
-    async with async_session() as session:
-        return await retriever.assess_profile_recipe_pool(
-            session,
-            user_profile=user_profile,
-            days=days,
-        )
-
 
 def normalize_plan_for_shopping(
     plan_data: dict[str, Any],
