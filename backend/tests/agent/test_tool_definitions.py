@@ -8,7 +8,8 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from app.config import Settings
-from app.core.agent import orchestrator as agent
+from app.core.agent import runtime as agent
+from app.core.agent.guards import AgentSessionState
 
 
 def test_definitions_and_partial_registration(monkeypatch):
@@ -69,7 +70,7 @@ async def test_llm_request_contract(expect_final):
 
 @pytest.mark.parametrize("profile,recipes,validated", product([False, True], repeat=3))
 def test_session_state(profile, recipes, validated):
-    state = agent.AgentSessionState(profile, recipes, "hash" if validated else None)
+    state = AgentSessionState(profile, recipes, "hash" if validated else None)
     assert state.ready_for_final() == (profile and recipes and validated)
     assert state.missing_steps() == [
         name
@@ -86,7 +87,6 @@ def test_limits_and_config():
     exc = agent.AgentLimitError(10, ["pending-1"])
     assert exc.llm_calls == 10 and exc.pending_tool_call_ids == ["pending-1"]
     assert "10" in str(exc) and "pending-1" in str(exc)
-    assert Settings.model_fields["AGENT_TOOL_USE_ENABLED"].default is False
     for value in [0, 21]:
         with pytest.raises(ValidationError):
             Settings(_env_file=None, AGENT_MAX_SEARCH_CALLS=value)

@@ -35,9 +35,14 @@ outputs/*
 scripts/*
 
 docs/*
+!docs/agentic-only/
 
 
 # Node / Astro frontend
 frontend/node_modules/
 frontend/dist/
 frontend/.astro/
+
+# Generated frontend test results and Office locks
+frontend/test-results/
+~$*

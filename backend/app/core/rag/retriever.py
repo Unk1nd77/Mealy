@@ -15,8 +15,9 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.core import cache
 from app.core.embeddings import EmbeddingServiceError, embed_search_query
+from app.core.meal_compatibility import recipe_type_matches
 from app.core.relational_store import load_recipes_from_rows, recipe_to_dict
-from app.db.models import Recipe
+from app.db.models import DEFAULT_MEAL_SCHEDULE, Recipe
 
 CACHE_KEY = "recipes:all"
 CACHE_TTL = 86400  # 24 hours
@@ -368,8 +369,80 @@ async def search_recipes(
 
 def meal_type_matches(recipe: dict, meal_type: str) -> bool:
     recipe_type = _infer_meal_type(recipe.get("tags"), recipe.get("meal_type"))
-    return (
-        recipe_type == meal_type
-        or recipe_type == "universal"
-        or (recipe_type == "lunch/dinner" and meal_type in {"lunch", "dinner"})
+    return recipe_type_matches(recipe_type, meal_type, policy="retrieval")
+
+def assess_recipe_pool(
+    recipes: list[dict],
+    *,
+    user_profile: dict,
+    min_recipes_per_slot: int = 1,
+) -> dict:
+    """Assess deterministic slot coverage and coarse calorie feasibility.
+
+    This is deliberately server-owned and does not ask the LLM to infer whether
+    the catalog is usable. ``min_recipes_per_slot`` is normally 2 for a multi-day
+    plan so adjacent days can avoid repeating the same base recipe.
+    """
+    schedule = user_profile.get("meal_schedule") or DEFAULT_MEAL_SCHEDULE
+    target_calories = int(user_profile.get("target_calories") or 0)
+    required_per_slot: dict[str, int] = {}
+    slot_counts: dict[str, int] = {}
+    min_achievable = 0.0
+    max_achievable = 0.0
+
+    for slot in schedule:
+        slot_type = str(slot.get("type") or "").strip()
+        if not slot_type:
+            continue
+        matched = [recipe for recipe in recipes if meal_type_matches(recipe, slot_type)]
+        slot_counts[slot_type] = len(matched)
+        required_per_slot[slot_type] = max(1, min_recipes_per_slot)
+        if matched:
+            calories = [float(recipe.get("calories") or 0) for recipe in matched]
+            calories = [value for value in calories if value > 0]
+            if calories:
+                min_achievable += min(calories)
+                max_achievable += max(calories)
+
+    missing_slots = [
+        slot for slot, required in required_per_slot.items() if slot_counts.get(slot, 0) < required
+    ]
+    calorie_feasible = target_calories <= 0 or (
+        min_achievable <= target_calories * 1.05
+        and max_achievable >= target_calories * 0.95
     )
+    return {
+        "feasible": not missing_slots and calorie_feasible,
+        "slot_counts": slot_counts,
+        "required_per_slot": required_per_slot,
+        "missing_slots": missing_slots,
+        "min_achievable_calories": round(min_achievable, 1),
+        "max_achievable_calories": round(max_achievable, 1),
+        "target_calories": target_calories,
+        "calorie_feasible": calorie_feasible,
+    }
+
+
+async def assess_profile_recipe_pool(
+    session: AsyncSession,
+    *,
+    user_profile: dict,
+    days: int,
+) -> dict:
+    """Assess the same safety-filtered pool that agent search is allowed to use."""
+    recipes = await search_recipes(
+        session,
+        allergies=user_profile.get("allergies") or [],
+        dislikes=user_profile.get("disliked_ingredients") or [],
+        diseases=user_profile.get("diseases") or [],
+        preferred_tags=user_profile.get("preferences") or [],
+        semantic_query=None,
+        limit=settings.RAG_VECTOR_CANDIDATE_LIMIT,
+    )
+    diagnostics = assess_recipe_pool(
+        recipes,
+        user_profile=user_profile,
+        min_recipes_per_slot=2 if days > 1 else 1,
+    )
+    diagnostics["candidate_count"] = len(recipes)
+    return diagnostics

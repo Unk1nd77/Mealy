@@ -12,56 +12,14 @@ from itertools import product
 from typing import Any
 
 from app.core.agent.schemas import DayPlan
+from app.core.meal_compatibility import (
+    recipe_matches_slot as _recipe_matches_slot,
+)
+from app.core.meal_compatibility import slot_compatible_types
+from app.core.recipe_usage import _meal_base_id_from_recipes, _recipe_base_id
 from app.core.skills.validator import validate_day_plan
 
-
-def _normalize_meal_type(value: str | None) -> set[str]:
-    if not value:
-        return set()
-    return {chunk.strip().lower() for chunk in value.replace(",", "/").split("/") if chunk.strip()}
-
-
-def _slot_compatible_types(slot_type: str) -> set[str]:
-    if slot_type == "breakfast":
-        return {"breakfast"}
-    if slot_type == "snack":
-        return {"snack", "second_snack"}
-    if slot_type == "second_snack":
-        return {"snack", "second_snack"}
-    if slot_type == "lunch":
-        return {"lunch", "lunch/dinner", "universal"}
-    if slot_type == "dinner":
-        return {"dinner", "lunch/dinner", "universal"}
-    return {slot_type}
-
-
-def _recipe_matches_slot(recipe: dict[str, Any], slot_type: str) -> bool:
-    recipe_types = _normalize_meal_type(recipe.get("meal_type"))
-    if not recipe_types:
-        return False
-    return bool(recipe_types & _slot_compatible_types(slot_type))
-
-
-def _recipe_base_id(recipe: dict[str, Any]) -> str:
-    base_id = recipe.get("base_recipe_id")
-    if base_id:
-        return str(base_id)
-    recipe_id = str(recipe.get("id"))
-    return recipe_id.split("::", 1)[0]
-
-
-def _meal_base_id(meal: dict[str, Any]) -> str:
-    recipe_id = str(meal.get("recipe_id"))
-    return recipe_id.split("::", 1)[0]
-
-
-def _meal_base_id_from_recipes(
-    meal: dict[str, Any], recipes_by_id: dict[str, dict[str, Any]]
-) -> str:
-    recipe = recipes_by_id.get(str(meal.get("recipe_id")))
-    if recipe is not None:
-        return _recipe_base_id(recipe)
-    return _meal_base_id(meal)
+_slot_compatible_types = slot_compatible_types  # Transitional compatibility export.
 
 
 def _normalize_day_totals(day_plan: dict[str, Any]) -> dict[str, Any]:

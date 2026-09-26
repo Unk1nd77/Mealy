@@ -5,8 +5,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.core.agent import orchestrator as agent
-from tests.test_orchestrator import _user_profile
+from app.core.agent import tools as agent
+from tests.agent.sample_data import _user_profile
 
 
 @given(st.integers(1, 10000), st.lists(st.text(), max_size=5))
@@ -160,7 +160,7 @@ async def test_validator_exception(executor, plan_data, monkeypatch):
     def fail(*args, **kwargs):
         raise RuntimeError("validation failed")
 
-    monkeypatch.setattr(agent, "validate_day_plan", fail)
+    monkeypatch.setattr(agent.validator, "validate_day_plan", fail)
     result = await executor.dispatch("validate_day_plan", {"plan": plan_data})
     assert result["errors"] == ["Internal validation error: validation failed"]
     assert not result["is_valid"] and executor.session_state.last_validated_hash is None

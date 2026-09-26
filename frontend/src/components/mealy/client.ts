@@ -1,5 +1,5 @@
 import { API_BASE, PLAN_DAYS } from "./config"
-import { generationEndpoint, readError, taskEndpoint } from "./api"
+import { readError } from "./api"
 import type {
   AuthResponse,
   DayPlan,
@@ -122,16 +122,16 @@ export function createMealyClient(accessToken: string | null, onExpired?: () => 
       return response.blob()
     },
     async generatePlan(userId: string) {
-      return json<{ task_id: string }>(`${API_BASE}${generationEndpoint()}`, {
+      return json<{ task_id: string }>(`${API_BASE}/api/generate-plan`, {
         method: "POST",
-        body: JSON.stringify({ user_id: userId, days: PLAN_DAYS }),
+        body: JSON.stringify({ user_id: userId, days: PLAN_DAYS, mode: "agentic" }),
       })
     },
     async getPlan(planId: string) {
       return json<PlanResponse>(`${API_BASE}/api/plans/${planId}`)
     },
     async getTask(taskId: string) {
-      return json<TaskResponse>(`${API_BASE}${taskEndpoint(taskId)}`)
+      return json<TaskResponse>(`${API_BASE}/api/tasks/${encodeURIComponent(taskId)}`)
     },
     async getUser(userId: string) {
       return json<UserResponse>(`${API_BASE}/api/users/${userId}`)

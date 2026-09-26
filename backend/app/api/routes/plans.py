@@ -6,10 +6,9 @@ import uuid
 from datetime import date
 from io import BytesIO
 from pathlib import Path
-from typing import Literal
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -17,8 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
-from app.core.agent.orchestrator import build_plan_observability
-from app.core.demo_pipeline import create_demo_task, get_demo_task, schedule_demo_pipeline
+from app.core.agent.contracts import GENERATION_TASK_NAME, GenerationMode
+from app.core.agent.observability import build_plan_observability
 from app.core.relational_store import (
     build_plan_data_from_rows,
     create_generation_run,
@@ -47,7 +46,7 @@ PDF_FONT_CANDIDATES = (
 class GeneratePlanRequest(BaseModel):
     user_id: uuid.UUID
     days: int = Field(default=7, ge=1, le=14)
-    mode: Literal["agent_cli", "llm_direct"] = "agent_cli"
+    mode: GenerationMode = "agentic"
 
 
 class GeneratePlanResponse(BaseModel):
@@ -71,11 +70,6 @@ class DemoStepResponse(BaseModel):
     status: str
     message: str = ""
 
-
-class DemoTaskStatusResponse(TaskStatusResponse):
-    current_step: str | None = None
-    steps: list[DemoStepResponse] = Field(default_factory=list)
-    shopping_list: list[dict] | None = None
 
 
 class PlanResponse(BaseModel):
@@ -260,14 +254,15 @@ def _build_shopping_list_pdf(plan_id: uuid.UUID, shopping_list: list[dict]) -> b
 
 @router.post("/generate-plan", response_model=GeneratePlanResponse)
 async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(get_db)):
+    mode = data.mode
     task = celery_app.send_task(
-        "generate_meal_plan",
-        args=[str(data.user_id), data.days, data.mode],
+        GENERATION_TASK_NAME,
+        args=[str(data.user_id), data.days, mode],
     )
     await create_generation_run(
         db,
         user_id=str(data.user_id),
-        mode=data.mode,
+        mode=mode,
         task_id=task.id,
         status="QUEUED",
     )
@@ -275,18 +270,9 @@ async def generate_plan(data: GeneratePlanRequest, db: AsyncSession = Depends(ge
         "Plan generation queued: task_id={} user_id={} mode={}",
         task.id,
         data.user_id,
-        data.mode,
+        mode,
     )
     return GeneratePlanResponse(task_id=task.id)
-
-
-@router.post("/demo/generate-plan", response_model=GeneratePlanResponse)
-async def generate_demo_plan(data: GeneratePlanRequest, background_tasks: BackgroundTasks):
-    task = create_demo_task(str(data.user_id), data.days)
-    await task.save()
-    background_tasks.add_task(schedule_demo_pipeline, task)
-    logger.info("Demo plan generation queued: task_id={} user_id={}", task.task_id, data.user_id)
-    return GeneratePlanResponse(task_id=task.task_id)
 
 
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
@@ -326,14 +312,6 @@ async def get_task_status(task_id: str):
         response.error = str(result.result)
 
     return response
-
-
-@router.get("/demo/tasks/{task_id}", response_model=DemoTaskStatusResponse)
-async def get_demo_task_status(task_id: str):
-    task = await get_demo_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Demo task not found")
-    return DemoTaskStatusResponse(**task.payload())
 
 
 @router.get("/plans/{plan_id}", response_model=PlanResponse)

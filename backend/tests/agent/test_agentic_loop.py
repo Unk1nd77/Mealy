@@ -8,8 +8,9 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.core.agent import orchestrator as agent
-from tests.test_orchestrator import _user_profile
+from app.core.agent import runtime as agent
+from app.core.rag import retriever
+from tests.agent.sample_data import _user_profile
 
 
 def call(name, args=None, call_id=None):
@@ -79,6 +80,30 @@ async def test_early_final_feedback(monkeypatch, profile, plan_data, search_mock
     )
 
 
+
+@pytest.mark.parametrize("float_in_tool", [True, False])
+async def test_equivalent_numeric_json_does_not_invalidate_plan(
+    monkeypatch, profile, plan_data, search_mock, float_in_tool
+):
+    """An int/float formatting difference must not require another LLM round."""
+    tool_plan = deepcopy(plan_data)
+    response_plan = deepcopy(plan_data)
+    numeric_plan = tool_plan if float_in_tool else response_plan
+    numeric_plan["total_calories"] = float(numeric_plan["total_calories"])
+    numeric_plan["meals"][0]["calories"] = float(numeric_plan["meals"][0]["calories"])
+
+    snapshots = fake_llm(
+        monkeypatch, [*setup_calls(tool_plan), final(response_plan)]
+    )
+    result = await agent._run_agentic_loop(profile, AsyncMock())
+
+    assert result.quality_status == "valid"
+    assert result.attempts_used == 3
+    assert len(snapshots) == 3
+    assert result.plan.meals[0].calories == 500
+
+
+
 async def test_hash_mismatch(monkeypatch, profile, plan_data, search_mock):
     changed = deepcopy(plan_data)
     changed["meals"][0]["title"] = "Changed"
@@ -109,7 +134,9 @@ async def test_provenance_before_backend_validation(monkeypatch, profile, plan_d
             final(plan_data),
         ],
     )
-    with patch.object(agent, "validate_day_plan", wraps=agent.validate_day_plan) as validate:
+    with patch.object(
+        agent.validator, "validate_day_plan", wraps=agent.validator.validate_day_plan
+    ) as validate:
         result = await agent._run_agentic_loop(profile, AsyncMock())
     assert result.attempts_used == 5
     assert "not returned by search_recipes" in snapshots[3][0][-1]["content"]
@@ -133,7 +160,9 @@ async def test_parse_feedback(monkeypatch, profile, plan_data, search_mock, bad_
 async def test_backend_is_quality_authority(monkeypatch, profile, plan_data, search_mock):
     fake_llm(monkeypatch, [*setup_calls(plan_data), final(plan_data)])
     with patch.object(
-        agent, "validate_day_plan", side_effect=[(True, None), (False, "backend rejected")]
+        agent.validator,
+        "validate_day_plan",
+        side_effect=[(True, None), (False, "backend rejected")],
     ):
         result = await agent._run_agentic_loop(profile, AsyncMock())
     assert (
@@ -207,13 +236,9 @@ async def test_batch_order(count):
     assert [m["tool_call_id"] for m in seen[1][3:]] == [str(i) for i in range(count)]
 
 
-async def test_disabled_and_empty_registry(monkeypatch, profile):
+async def test_empty_registry_with_legacy_flag_disabled(monkeypatch, profile):
     llm = AsyncMock()
     monkeypatch.setattr(agent, "_call_llm_with_tools", llm)
-    monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
-    with pytest.raises(agent.AgentConfigurationError, match="AGENT_TOOL_USE_ENABLED=False"):
-        await agent._run_agentic_loop(profile, AsyncMock())
-    monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", True)
     monkeypatch.setattr(agent, "_build_tool_definitions", list)
     with pytest.raises(agent.AgentConfigurationError):
         await agent._run_agentic_loop(profile, AsyncMock())
@@ -233,7 +258,7 @@ async def test_public_entry_closes_session(monkeypatch, profile, plan_data, sear
 
     monkeypatch.setattr(agent, "async_session", session_factory)
     fake_llm(monkeypatch, [*setup_calls(plan_data), final(plan_data)])
-    result = await agent.generate_day_plan(profile, [])
+    result = await agent.generate_day_plan(profile)
     assert result.quality_status == "valid" and sessions == ["open", "closed"]
 
 
@@ -255,7 +280,7 @@ async def test_requested_day_is_preserved(monkeypatch, profile, plan_data, searc
 
 @given(st.lists(st.sampled_from(["get_user_profile", "unknown"]), min_size=1, max_size=10))
 async def test_trace_covers_every_call(names):
-    from tests.test_orchestrator import _recipes, _valid_llm_json
+    from tests.agent.sample_data import _recipes, _valid_llm_json
 
     plan = json.loads(_valid_llm_json())["day"]
     responses = [
@@ -270,9 +295,7 @@ async def test_trace_covers_every_call(names):
     ]
     with (
         patch.object(agent, "_call_llm_with_tools", new_callable=AsyncMock, side_effect=responses),
-        patch.object(
-            agent.retriever, "search_recipes", new_callable=AsyncMock, return_value=_recipes()
-        ),
+        patch.object(retriever, "search_recipes", new_callable=AsyncMock, return_value=_recipes()),
     ):
         result = await agent._run_agentic_loop(_user_profile(), AsyncMock())
     assert len(result.tool_call_trace) == len(names) + 3
@@ -283,7 +306,7 @@ async def test_trace_covers_every_call(names):
         assert "private" not in entry["args_summary"]
 
 
-async def test_summary_and_mode_logs(monkeypatch, profile):
+async def test_summary_logs(monkeypatch, profile):
     logs = []
     sink = agent.logger.add(lambda message: logs.append(str(message)), level="INFO")
     try:
@@ -297,13 +320,5 @@ async def test_summary_and_mode_logs(monkeypatch, profile):
             f"'{name}': 0" in summary
             for name in ("get_user_profile", "search_recipes", "validate_day_plan")
         )
-        monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", False)
-        monkeypatch.setattr(agent, "_run_pipeline", AsyncMock())
-        await agent.generate_day_plan(profile, [])
-        assert any("mode=pipeline" in line for line in logs)
-        monkeypatch.setattr(agent.settings, "AGENT_TOOL_USE_ENABLED", True)
-        monkeypatch.setattr(agent, "_run_agentic_loop", AsyncMock())
-        await agent.generate_day_plan(profile, [])
-        assert any("mode=tool_use" in line for line in logs)
     finally:
         agent.logger.remove(sink)

@@ -8,14 +8,6 @@ export async function readError(response: Response): Promise<string> {
     return `HTTP ${response.status}`
   }
 }
-export function generationEndpoint(): string {
-  return "/api/generate-plan"
-}
-
-export function taskEndpoint(taskId: string): string {
-  return `/api/tasks/${taskId}`
-}
-
 export function normalizeTaskStatus(status: string): string {
   if (status === "RUNNING" || status === "STARTED") {
     return "GENERATING"
